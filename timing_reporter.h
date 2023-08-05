@@ -1,0 +1,81 @@
+#ifndef __TIMING_REPORTER
+#define __TIMING_REPORTER
+
+#include "types.h"
+#include "formatted.h"
+
+typedef std::chrono::time_point<std::chrono::high_resolution_clock> hrclock;
+
+class timing_reporter
+{
+private:
+    hrclock start;
+    hrclock stop;
+    float total_duration = 0;
+    bool paused = false;
+    size_t start_count = 0;
+public:
+    timing_reporter(p=false)
+        : start(high_resolution_clock::now()), paused(p) {};
+    void pause()
+    {
+        if (!paused) {
+            stop = high_resolution_clock::now();
+            auto duration = duration_cast<microseconds>(stop - start);
+            total_duration += duration.count();
+            paused = true;
+        }
+    }
+    void restart()
+    {
+        if (paused) {
+            start = high_resolution_clock::now();
+            paused = false;
+            ++start_count;
+        }
+    }
+    void reset()
+    {
+        paused = true;
+        total_duration = 0;
+        start_count = 0;
+    }
+    timing_reporter operator+=(const timing_reporter &other)
+    {
+        total_duration += other.total_duration;
+        start_count += other.start_count;
+    }
+    string show_time(float us)
+    {
+        if (us > 1000000) {
+            return formatted("%.3f S", us / 1000000);
+        } else if (us > 1000) {
+            return formatted("%.3f mS", us/ 1000);
+        } else if (us < 1) {
+            return formatted("%.3f nS", us * 1000);
+        } else {
+            return formatted("%.3f uS", us);
+        }
+    }
+    string report(const string &what, const string &prefix="")
+    {
+        return report(start_count, what, prefix);
+    }
+    string report(size_t count, const string &what, const string &prefix="")
+    {
+        pause();
+        return formatted("%s%d %s in %s, %s each\n",
+                         prefix, count, what, show_time(total_duration),
+                         show_time(total_duration / count));
+    }
+    void show(const string &what, const string &prefix="")
+    {
+        show(start_count, what, prefix);
+    }
+    void show(size_t count, const string &what, const string &prefix="")
+    {
+        cout << report(count, what, prefix);
+    }
+};
+
+#endif
