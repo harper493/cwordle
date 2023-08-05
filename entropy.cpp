@@ -56,7 +56,12 @@ float entropy(const vector<float> &data)
     }
     float ent = add_horizontal(ent256);
     float sum = add_horizontal(sum256);
-    return (((-(ent - sum * log(sum)) / sum)) / log(n));    
+    float result = (((-(ent - sum * log(sum)) / sum))); // / log(n));
+    if (isnan(result)) {
+        result = 0.0;
+    }
+    return result;
+    
 }
 
 /************************************************************************
@@ -73,12 +78,12 @@ float entropy_slow(const vector<float> &data)
     for (size_t i : irange(0ul, data.size())) {
         float d = data[i];
         if (d > 0) {
-            e += d * log2(d);
+            e += d * log(d);
             sum += d;
             n += 1;
         }
     }
-    return (((-(e - sum * log2(sum)) / sum)) / log2(n));    
+    return (((-(e - sum * log(sum)) / sum))); // / log2(n));    
 }
 
 /************************************************************************
@@ -95,9 +100,9 @@ float entropy_slowest(const vector<float> &data)
     for (size_t i : irange(0ul, data.size())) {
         float d = data[i];
         if (d > 0) {
-            e += d * invsum * log2(d * invsum);
+            e += d * invsum * log(d * invsum);
             n += 1;
         }
     }
-    return -e / log2(n);
+    return -e; //  / log2(n);
 }

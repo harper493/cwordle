@@ -14,7 +14,17 @@ public:
         KEY key;
         VALUE value;
         bool operator<(const entry &other) const { return key < other.key; };
-        entry(KEY k=KEY(), VALUE v=VALUE()) : key(k), value(v) { };
+        entry()
+            : key(KEY()), value(VALUE()) { };
+        entry(KEY k, VALUE v) : key(k), value(v) { };
+        entry(const entry &other)
+            : key(other.key), value(other.value) { };
+        entry &operator=(const entry &other)
+        {
+            key = other.key;
+            value = other.value;
+            return *this;
+        }
     };
     typedef vector<entry> entries_t;
     typedef typename entries_t::iterator iterator;
@@ -24,7 +34,7 @@ private:
     vector<entry> entries;
     size_t max_size;
     bool sorted = false;
-    KEY worst_key = FLT_MAX;
+    VALUE worst_key = FLT_MAX;
 public:
     partial_sorted_list(size_t sz=0)
         : max_size(sz)
@@ -36,8 +46,8 @@ public:
     const_iterator begin() const { return entries.begin(); };
     const_iterator end() const { return entries.end(); };
     size_t size() const { return entries.size(); };
-    KEY get_worst_key() const { return worst_key; };
-    KEY insert(const KEY &k, const VALUE &v)
+    VALUE get_worst_key() const { return worst_key; };
+    void insert(const KEY &k, const VALUE &v)
     {
         if (entries.size() < max_size) {
             entries.emplace_back(k, v);
@@ -46,14 +56,13 @@ public:
             if (!sorted) {
                 reorder();
             }
-            if (k < worst_key) {
+            if (v > worst_key) {
                 entries[entries.size() - 1] = entry(k, v);
                 sorted = false;
             }
         }
-        return worst_key;
     }
-    KEY merge(const my_type_t &other)
+    VALUE merge(const my_type_t &other)
     {
         for (const auto &e : other.entries) {
             entries.emplace_back(e);
@@ -63,7 +72,7 @@ public:
         return worst_key;
     }
     template<class ITER>
-    KEY merge(ITER &start, const ITER &end)
+    VALUE merge(ITER &start, const ITER &end)
     {
         while (start != end) {
             for (const auto &e : *start++) {
@@ -86,11 +95,12 @@ private:
     void reorder()
     {
         if (!sorted) {
-            std::partial_sort(entries.begin(), entries.begin() + max_size, entries.end());
+            std::partial_sort(entries.begin(), entries.begin() + max_size, entries.end(),
+                              [](const entry &e1, const entry &e2){ return e2 < e1; });
             if (entries.size() > max_size) {
                 entries.resize(max_size);
             }
-            worst_key = entries.back().key;
+            worst_key = entries.back().value;
             sorted = true;
         }
     }

@@ -21,11 +21,10 @@ void cwordle::load_words()
 cwordle::result_list_t cwordle::best(size_t how_many)
 {
     result_list_t result(how_many);
-    if (!word_lists.empty()) {
-        for (const auto &w : my_dict.get_words()) {
-            float e = words_lists.back().entropy(w);
-            result.insert(w, e);
-        }
+    const word_list &wl = word_lists.empty() ? all_my_words : word_lists.back();
+    for (const auto &w : my_dict.get_words()) {
+        float e = wl.entropy(w);
+        result.insert(&w, e);
     }
     return result;
 }
@@ -38,7 +37,9 @@ cwordle::result_list_t cwordle::best(size_t how_many)
 float cwordle::entropy(const wordle_word &w)
 {
     float result = 0;
-    if (!word_lists.empty()) {
+    if (word_lists.empty()) {
+        result = all_my_words.entropy(w);
+    } else {
         result = word_lists.back().entropy(w);
     }
     return result;
@@ -50,18 +51,25 @@ float cwordle::entropy(const wordle_word &w)
     
 void cwordle::new_word()
 {
-    set_word(my_dict.get_string(random::get_int(my_dict.size())));
+    set_word(my_dict.get_random());
 }
 
+/************************************************************************
+ * remaining - list remaining usable words
+ ***********************************************************************/
+
 const word_list &cwordle::remaining()
+{
+    return word_lists.empty() ? all_my_words : word_lists.back();
+}
 
 /************************************************************************
- * reveal - show the current word
+ * ge6_current_word - get the current word
  ***********************************************************************/
     
-string cwordle::reveal()
+const wordle_word &cwordle::get_current_word() const
 {
-    return current_word.str();
+    return current_word;
 }
 
 /************************************************************************
@@ -89,12 +97,12 @@ bool cwordle::set_word(const string &w)
 
 wordle_word::match_result cwordle::try_word(const wordle_word &w)
 {
-    wordle_word::match_result mr(current_word.match(w));
-    results.emplace_back(mr);
-    wordle_word::match_target mt(current_word, mr);
+    wordle_word::match_result mr(w.match(current_word));
+    results.emplace_back(w, mr);
+    wordle_word::match_target mt(w, mr);
     word_list base_wl(my_dict);
     const word_list &wl = word_lists.empty() ? base_wl : word_lists.back();
-    words_lists.emplace_back(wl.filter(mt));
+    word_lists.emplace_back(wl.filter(mt));
     return mr;
 }
 
@@ -104,9 +112,9 @@ wordle_word::match_result cwordle::try_word(const wordle_word &w)
     
 void cwordle::undo()
 {
-    if (!results.empty()) {
-        results.resize(results.size() - 1);
-        word_lists.resize(word_lists.size() - 1);
+    if (size() > 0) {
+        results.pop_back();
+        word_lists.pop_back();
     }
 }
 

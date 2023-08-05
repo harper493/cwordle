@@ -179,6 +179,10 @@ public:
         {
             return (partial_match & (1 << i)) != 0;
         }
+        U16 get_hash() const
+        {
+            return (partial_match << 5) | exact_match;
+        }
         void parse(const string &s);
         static U16 good_bits()
         {
@@ -221,7 +225,11 @@ public:
         letter_target letters;
     public:
         match_target(const wordle_word &target, const match_result &mr);
-        bool conforms(const wordle_word &other);
+        bool conforms(const wordle_word &other) const;
+        styled_text show() const
+        {
+            return my_word.styled_str(my_mr);
+        }
     };
 private:
     masks_t exact_mask;
@@ -235,7 +243,15 @@ private:
     letter_mask thrice_letters;
     text_t text;
 public:
-    wordle_word(const string &w);
+    wordle_word()
+    {
+        text.fill(0);
+    }
+    wordle_word(const string &w)
+    {
+        set_word(w);
+    }
+    void set_word(const string &w);
     bool good() const
     {
         return text[0] != 0;
@@ -244,8 +260,20 @@ public:
     {
         return string(text.begin(), text.end());
     }
+    bool operator<(const wordle_word &other) const
+    {
+        return text < other.text;
+    }
+    bool operator==(const wordle_word &other) const
+    {
+        return text == other.text;
+    }
+    bool operator!=(const wordle_word &other) const
+    {
+        return text != other.text;
+    }
     styled_text styled_str(const match_result &mr) const;
-    match_result match(const wordle_word &target);
+    match_result match(const wordle_word &target) const;
     letter_mask masked_letters(U16 mask) const;
     static string groom(const string &w);
 private:

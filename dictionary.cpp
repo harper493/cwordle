@@ -1,4 +1,5 @@
 #include "dictionary.h"
+#include "random.h"
 
 bool dictionary::insert(const string &w)
 {
@@ -23,4 +24,20 @@ optional<dictionary::word_index_t> dictionary::find(const string &w) const
         result = iter->second;
     }
     return result;
+}
+
+optional<const wordle_word*> dictionary::find_word(const string &w) const
+{
+    optional<const wordle_word*> result;
+    auto ww = find(w);
+    if (ww) {
+        result = &(*this)[ww.value()];
+    }
+    return result;
+}
+
+
+string dictionary::get_random() const
+{
+    return get_string(random::get_int(size()));
 }

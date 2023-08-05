@@ -11,6 +11,8 @@
 #include <chrono>
 #include <functional>
 #include <mutex>
+#include <set>
+#include <boost/lexical_cast.hpp>
 #include <boost/range/irange.hpp>
 
 using std::vector;
@@ -21,7 +23,9 @@ using std::array;
 using std::pair;
 using std::bind;
 using std::mutex;
+using std::set;
 using boost::irange;
+using boost::lexical_cast;
 
 using std::cout;
 using namespace std::placeholders;

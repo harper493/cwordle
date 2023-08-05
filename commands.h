@@ -2,8 +2,9 @@
 #define __COMMANDS
 
 #include "types.h"
-#include "keyword_table.h"
 #include "cwordle.h"
+#include "formatted.h"
+#include <boost/algorithm/string/predicate.hpp>
 
 class commands
 {
@@ -11,23 +12,71 @@ public:
     class syntax_exception : public std::exception
     {
     private:
-        string text;
+        string what_str;
     public:
         syntax_exception(const string &t)
-            : text(t) { };
-        string what() const
+            : what_str(t) { };
+        template<typename... ARGS>
+        syntax_exception(const string &f, const ARGS &...args)
         {
-            return text;
+            what_str = formatted(f, args...);
+        }
+        const char * what() const noexcept
+        {
+            return what_str.c_str();
+        }
+    };
+    typedef void(commands::*fn_t)();
+    struct keyword
+    {
+    public:
+        string full;
+        string minimal;
+        string help;
+        fn_t my_fn;
+    public:
+        keyword(const string &f, const string &m, const string &h, fn_t fn)
+            : full(f), minimal(m), help(h), my_fn(fn) { };
+        keyword(const keyword &other)
+            : full(other.full), minimal(other.minimal), help(other.help), my_fn(other.my_fn) { };
+    };
+    struct keyword_table
+    {
+    public:
+        vector<keyword> keywords;
+    public:
+        template<class COLL>
+        keyword_table(const COLL &c)
+        {
+            for (const keyword &k : c) {
+                add_keyword(k);
+            }
+        }
+        void add_keyword(const keyword &kw)
+        {
+            keywords.emplace_back(kw);
+        }
+        const keyword *find(const string &kw) const
+        {
+            const keyword *result = NULL;
+            for (const auto &k : keywords) {
+                if (boost::starts_with(k.full, kw) && boost::starts_with(kw, k.minimal)) {
+                    result = &k;
+                    break;
+                }
+            }
+            return result;
         }
     };
 private:
-    keyword_table keywords;
-    cwordle the_wordle;
-    const char **my_argv = NULL;
-    int my_argc = 0;
+    cwordle &the_wordle;
+    string my_line;
+    string rest_of_line;
+    string cur_arg;
 public:
-    bool do_command(const char *argv[], int argc);
-private:
+    commands(cwordle &cw);
+    bool do_command(const string &line);
+public:
     void do_best();
     void do_entropy();
     void do_exit();
@@ -37,11 +86,20 @@ private:
     void do_remaining();
     void do_reveal();
     void do_set();
+    void do_test();
     void do_try();
     void do_undo();
     void do_words();
-    string next_arg();
+private:
+    string next_arg(bool end_ok=false);
+    optional<int> next_arg_int(bool end_ok=false);
+    const wordle_word &validate_word(const string &w) const;
     void show_error(const string &err);
+    void check_started() const;
 };
+
+#define KEYWORDS(NAME) commands::keyword_table NAME ( vector<commands::keyword> {
+#define KEYWORD(F,M,FN,H) commands::keyword(F, M, H, &commands::FN),
+#define KEYWORDS_END() });
 
 #endif

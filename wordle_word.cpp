@@ -10,7 +10,7 @@ const styled_text::color_e unmatched_color = styled_text::black;
 const styled_text::color_e matched_color = styled_text::green;
 const styled_text::color_e part_matched_color = styled_text::orange;
 
-wordle_word::wordle_word(const string &w)
+void wordle_word::set_word(const string &w)
 {
     memset(this, 0, sizeof(wordle_word));
     letter_mask once;
@@ -145,7 +145,7 @@ string wordle_word::masks_t::str() const
     return result;
 }
 
-wordle_word::match_result wordle_word::match(const wordle_word &target)
+wordle_word::match_result wordle_word::match(const wordle_word &target) const
 {
     __m256i exact = _mm256_and_si256(exact_mask.as_m256i(), target.exact_mask.as_m256i());
     __m256i target_all = _mm256_set1_epi32(target.all_letters.get());
@@ -234,7 +234,7 @@ wordle_word::match_target::match_target(const wordle_word &target, const match_r
     }    
 }
 
-bool wordle_word::match_target::conforms(const wordle_word &other)
+bool wordle_word::match_target::conforms(const wordle_word &other) const
 {
     if (other.str() == "beers") {
         int i = 0;
