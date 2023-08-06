@@ -3,12 +3,78 @@
 #include <cctype>
 
 /************************************************************************
+ * The wordle_word class and its member classes are the heart
+ * of this program.
+ *
+ * A wordle_word is a representation of a word. It includes both the
+ * text and also various representations and interpretations to
+ * facilitate the algorithms.
+ *
+ * Member classes are as follows:
+ *
+ * letter_mask: representation of one or more letters as a bit
+ * mask, using 26 out of 32 bits in a U32.
+ *
+ * word_mask: representation of all 5 letters of a word, as 5
+ * distinct letter_masks (so fitting into a single _mm256). The
+ * same class is also used to represent a choice of letters at
+ * each position.
+ *
+ * match_result - the result of comparing a word with a target.
+ * It contains two 5-bit masks, one for exact matches (i.e.
+ * the right letter in the right place) and one for partial
+ * matches (the right letter but in the wrong place).
+ *
+ * match_target - a "digest" of a word used when testing whether
+ * a given wordle_word matches the match_result. It is more
+ * fully described under the 'conforms' function below.
+ *
+ * A wordle_word contains, in addition to the text of its word:
+ *
+ * exact_mask: a "one hot" word mask with a bit set for eacvh
+ * exact letter position
+ *
+ * all_mask: a word mask with bits set at each position for
+ * every letter in the word
+ *
+ * once_mask: as above, but only for letters which appear
+ * exactly once
+ *
+ * twice_mask: as above, but only for letters which appear
+ * exactly twice
+ *
+ * thrice_mask: as above, but only for letters which appear
+ * exactly three times (rare but it happens)
+ *
+ * all_letters: a letter mask with a bit set of every letter that
+ * appears in the word
+ *
+ * once_letters: a letter mask with a bit set for every letter that
+ * appears exactly once
+ *
+ * twice_letters: a letter mask with a bit set for every letter that
+ * appears exactly twice
+ *
+ * thrice_letters: a letter mask with a bit set for every letter that
+ * appears exactly three times
+ *
+ * Holding this information greatly speeds up the 'match' and 'conforms'
+ * functions.
+ *
+ ***********************************************************************/
+
+/************************************************************************
  * Static data
  ***********************************************************************/
 
 const styled_text::color_e unmatched_color = styled_text::black;
 const styled_text::color_e matched_color = styled_text::green;
 const styled_text::color_e part_matched_color = styled_text::orange;
+
+/************************************************************************
+ * set_word - set up a wordle_wodr for a particular 5-letter word, setting
+ * up all the fields decsribed in the header comment.
+ ***********************************************************************/
 
 void wordle_word::set_word(const string &w)
 {
@@ -64,6 +130,11 @@ void wordle_word::set_word(const string &w)
     }
 }
 
+/************************************************************************
+ * masked_letters - return the exact letters of a word, only for
+ * the letter positions identified by the mask.
+ ***********************************************************************/
+
 wordle_word::letter_mask wordle_word::masked_letters(U16 mask) const
 {
     letter_mask result;
@@ -75,6 +146,14 @@ wordle_word::letter_mask wordle_word::masked_letters(U16 mask) const
     return result;
 }
 
+/************************************************************************
+ * groom - a static function to convert a word to its canonical form
+ * i.e. all lower case. It also checks whether tisis a valid word,
+ * i.e. the correct length and no letter repeated more than three times.
+ *
+ * Returns either the groomed word, or an empty string if the word
+ * is not good.
+ ***********************************************************************/
 string wordle_word::groom(const string &w)
 {
     string result;
@@ -102,6 +181,13 @@ string wordle_word::groom(const string &w)
     return result;
 }
 
+/************************************************************************
+ * styled_str - return a styled_text object representing the
+ * word with a match_result applied. Letters which are an exact
+ * match are colored green, partial matches are colored orange, and
+ * unmatched letters are black.
+ ***********************************************************************/
+
 styled_text wordle_word::styled_str(const match_result &mr) const
 {
     styled_text result;
@@ -117,6 +203,11 @@ styled_text wordle_word::styled_str(const match_result &mr) const
     return result;
 }
 
+/************************************************************************
+ * letter_mask::str - return a string representing the letters in a
+ * letter mask.
+ ***********************************************************************/
+
 string wordle_word::letter_mask::str() const
 {
     string result;
@@ -126,9 +217,15 @@ string wordle_word::letter_mask::str() const
         }
     }
     return result;
- }
+}
 
-string wordle_word::masks_t::str() const
+/************************************************************************
+ * word_mask::str - return a sting representing all the letters at
+ * each position in a word mask, separated by '|'. Handy when
+ * debugging.
+ ***********************************************************************/
+
+string wordle_word::word_mask::str() const
 {
     string result;
     for (size_t i : irange(0, WORD_LENGTH)) {
@@ -144,6 +241,32 @@ string wordle_word::masks_t::str() const
     }
     return result;
 }
+
+/************************************************************************
+ * match - compare two words, erturning a match_result indicating which
+ * letters are partial and exact matches.
+ *
+ * If there were never any repeated letters, this would be easy.Bit
+ * there are. We have to treat repeated letters separately, otherwise
+ * we would get false positives. For example, if we match "never"
+ * against "evict" we must get just one partial match, and another 
+ * non-match. But if we match it against "elate" we get two partial
+ * matches, as also we do against "beeef" (not really a word of course).
+ *
+ * The technique is:
+ *
+ * 1. Find the exact match, if any.
+ * 2. Remove the exact match(es) from the all_letters letter_mask,
+ *    then propagate the latter to all positions.
+ * 3. Compare that with the once-only letters.
+ * 4. Repeat the above for the two and three-repeat letters.
+ * 5. Or the three partial match results.
+ * 6. Now we have letter_masks with at least one non-zero bit
+ *    wherever there is a match. We use the cmp..._mask instruction
+ *    (AVX512 only) to turn this into the corresonding 5-bit mask,
+ *    with a 1 wherever there a non-zero letter_mask in the
+ *    word_mask.
+ ***********************************************************************/
 
 wordle_word::match_result wordle_word::match(const wordle_word &target) const
 {
@@ -164,6 +287,17 @@ wordle_word::match_result wordle_word::match(const wordle_word &target) const
     return match_result(exact_result, partial_result);
 }
 
+/************************************************************************
+ * match_result::parse - turn a string of 0/1/2 into teh corresponding
+ * match result, where:
+ *
+ * 0 => no match
+ * 1 => partial match
+ * 2 => exact match
+ *
+ * This is used by the unit tests.
+ ***********************************************************************/
+
 void wordle_word::match_result::parse(const string &m)
 {
     U16 e = 0;
@@ -180,6 +314,16 @@ void wordle_word::match_result::parse(const string &m)
     p |= e;
     *this = match_result(e, p);
 }
+
+/************************************************************************
+ * match_target constructor - given a word and a match_result, constuct
+ * a match_target object that can be used very efficiently in the
+ * 'conforms' function.
+ *
+ * The description under 'conforms' below explains the
+ * algorithm. This constructor sets up the required letter and
+ * word masks to allow ;conforms' to work efficiently.
+ ***********************************************************************/
 
 wordle_word::match_target::match_target(const wordle_word &target, const match_result &mr)
     : my_word(target), my_mr(mr)
@@ -234,11 +378,43 @@ wordle_word::match_target::match_target(const wordle_word &target, const match_r
     }    
 }
 
+/************************************************************************
+ * match_target::conforms - return true iff the match target, i.e. a
+ * word and its match result, will match the given word.
+ *
+ * As with match(), this would be much simpler if words never
+ * contained repeated letters. But they do. It works as follows:
+ *
+ * 1. Ensure that no letters are present that are absent in
+ *    the target word.
+ * 2. Ensure that all required letters (exact or partial match) are
+ *    present.
+ * 3. Ensure that all exact matches are present.
+ * 4. Ensure there are no exact matches that shouldn't be there.
+ *
+ * If there are no repeated letters, this is sufficient to match
+ * the word.
+ *
+ * Repeated letters are dealt with individually. There may be one or
+ * two of them. There are two cases:
+ *
+ * 1. There are no 'absent' places for the letter - for example, 
+ *    'roger' has two partial matches and no absences with 'lorry'.
+ *    In this case we must match at least 2, but it would be OK to
+ *    match 3 - e.g. with 'error'.
+ * 2. The repeated letter is also an absent letter, e.g. 'roger'
+ *    matched with 'hairy'. In this case there must be exactly
+ *    one match, so 'forty' is OK but not 'lorry' or 'error'.
+ *
+ * A letter_target object is created for each repeated letter,
+ * containing a word_mask for where it is permitted to occur, a
+ * match count, and whether or not it is OK to exceed the count.
+ *
+ * These are applied in turn for each epeated letter.
+ ***********************************************************************/
+
 bool wordle_word::match_target::conforms(const wordle_word &other) const
 {
-    if (other.str() == "beers") {
-        int i = 0;
-    }
     bool result = false;
     if (!(absent_letters & other.all_letters)) {
         if ((required_letters & other.all_letters) == required_letters) {

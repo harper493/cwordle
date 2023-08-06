@@ -2,12 +2,25 @@
 #include "styled_text.h"
 #include "tests.h"
 #include "timing_reporter.h"
+#include "wordle_word.h"
 #include "timers.h"
 #include <boost/algorithm/string.hpp>
 #include <regex>
 
 using std::regex;
 using std::smatch;
+
+/************************************************************************
+ * The singleton commands object provides the user interface to the cwordle object,
+ * which is where all the real work happens.
+ *
+ * It also manages and reports the timing_reporter objects which are
+ * used to report the time spent in critical algorithms.
+ ***********************************************************************/
+
+/************************************************************************
+ * Command keyword table.
+ ***********************************************************************/
 
 KEYWORDS(command_list)
 KEYWORD("best", "b", do_best, "show best word(s) to filter remaining words")
@@ -22,17 +35,30 @@ KEYWORD("set", "set", do_set, "set an explicit word")
 KEYWORD("test", "test", do_test, "run numbered development test")
 KEYWORD("try", "t", do_try, "try a word against the current word")
 KEYWORD("undo", "un", do_undo, "undo the last tried word")
+KEYWORD("words", "word", do_words, "add one or more words to the dictionary")
 KEYWORDS_END()
 
 regex rx_command("(\\S+)\\s*(.*)", std::regex_constants::ECMAScript);
 
 auto output_color = styled_text::green;
 
+/************************************************************************
+ * Constructor - ensure we have a new random word.
+ ***********************************************************************/
+
 commands::commands(cwordle &cw)
     : the_wordle(cw)
 {
     the_wordle.new_word();
 }
+
+/************************************************************************
+ * do_command - execute one command. Normally, pick off the first
+ * lexeme, whcih is the command, and look inthe command table to
+ * find it.
+ *
+ * Exceptionally, the 'exit' command is handled inline.
+ ***********************************************************************/
 
 bool commands::do_command(const string &line)
 {
@@ -67,9 +93,14 @@ bool commands::do_command(const string &line)
     return result;
 }
 
+/************************************************************************
+ * do_best - find the best word given the esults we have had so far.
+ ***********************************************************************/
+
 void commands::do_best()
 {
     auto how_many = next_arg_int(true);
+    check_finished();
     auto result = the_wordle.best(how_many.value_or(1));
     std::multimap<float, string> result_map;
     for (const auto &r : result) {
@@ -86,17 +117,33 @@ void commands::do_best()
     }
 }
 
+/************************************************************************
+ * do_entropy - calculate teh entropy for a given word in the 
+ * context of the results so far.
+ ***********************************************************************/
+
 void commands::do_entropy()
 {
     const wordle_word &w = validate_word(next_arg());
+    check_finished();
     float entropy = the_wordle.entropy(w);
     cout << styled_text(formatted("Entropy of '%s' is %.3f", w.str(), entropy), output_color)
          << "\n";
 }
 
+/************************************************************************
+ * do_exit - this function is never called but is required by the
+ * keyword table.
+ ***********************************************************************/
+
 void commands::do_exit()
 {
 }
+
+/************************************************************************
+ * do_help - use the keyword table to provide help for the
+ * available commands.
+ ***********************************************************************/
 
 void commands::do_help()
 {
@@ -117,24 +164,43 @@ void commands::do_help()
     }
 }
 
+/************************************************************************
+ * do_new - choose a new random word
+ ***********************************************************************/
+
 void commands::do_new()
 {
+    check_finished();
     the_wordle.new_word();
 }
+
+/************************************************************************
+ * do_recap - recall the results so far for the current word
+ ***********************************************************************/
 
 void commands::do_recap()
 {
     check_started();
+    check_finished();
     for (const auto &w : the_wordle.get_results()) {
         cout << w.show () << "\n";
     }
 }
 
+/************************************************************************
+ * do_remaining - list the remaining words after applying all the
+ * results so far. If there are more than 20, just list the first 20.
+ *
+ * A word list is not alphabetical, so we sort it forst.
+ ***********************************************************************/
+
 void commands::do_remaining()
 {
     check_started();
+    check_finished();
     const auto &wl = the_wordle.remaining();
     int sz = wl.size();
+    auto sorted_list = wl.sorted();
     vector<string> words;
     string suffix;
     if (sz > 20) {
@@ -148,26 +214,46 @@ void commands::do_remaining()
     cout << styled_text(formatted("%d words remaining: %s%s", wl.size(), words2, suffix), output_color) << "\n";
 }
 
+/************************************************************************
+ * do_reveal - reveal the current word
+ ***********************************************************************/
+
 void commands::do_reveal()
 {
+    check_finished();
     cout << styled_text(formatted("The current word is '%s'", the_wordle.get_current_word().str()),
                         output_color)
          << "\n";
 }
 
+/************************************************************************
+ * do_set - set an explicit target word
+ ***********************************************************************/
+
 void commands::do_set()
 {
-    the_wordle.set_word(validate_word(next_arg()).str());
+    string w = next_arg();
+    check_finished();
+    the_wordle.set_word(validate_word(w).str());
 }
+
+/************************************************************************
+ * do_test - followed by a test number, execute the corresponding unit test.
+ ***********************************************************************/
 
 void commands::do_test()
 {
     tests::do_test(next_arg_int().value());
 }
 
+/************************************************************************
+ * do_try - try a word against the current selection.
+ ***********************************************************************/
+
 void commands::do_try()
 {
     const wordle_word &ww = validate_word(next_arg());
+    check_finished();
     auto mr = the_wordle.try_word(ww);
     if (the_wordle.remaining().size()==1 && ww==the_wordle.get_current_word()) {
         cout << styled_text(formatted("Success! The word is '%s'", the_wordle.get_current_word().str()),
@@ -180,15 +266,35 @@ void commands::do_try()
     }
 }
 
+/************************************************************************
+ * do_undo - undo the most recent try
+ ***********************************************************************/
+
 void commands::do_undo()
 {
     check_started();
+    check_finished();
     the_wordle.undo();
 }
 
+/************************************************************************
+ * do_words - add one or more words to the dictionary
+ ***********************************************************************/
+
 void commands::do_words()
 {
+    string w;
+    while (!(w = next_arg(true)).empty()) {
+        string g = wordle_word::groom(w);
+        get_dict().insert(g);
+    }
 }
+
+/************************************************************************
+ * next_arg - get the next lexeme from the input line. If end_ok is
+ * true, return an empty string at the end of the line. Otherwise,
+ * throw an error.
+ ***********************************************************************/
 
 string commands::next_arg(bool end_ok)
 {
@@ -204,6 +310,10 @@ string commands::next_arg(bool end_ok)
     return cur_arg;
 }
 
+/************************************************************************
+ * next_arg_int - get the next lexeme and parse it as number
+ ***********************************************************************/
+
 optional<int> commands::next_arg_int(bool end_ok)
 {
     optional<int> result;
@@ -218,7 +328,13 @@ optional<int> commands::next_arg_int(bool end_ok)
     return result;
 }
 
-const wordle_word &commands::validate_word(const string &w) const
+/************************************************************************
+ * validate_word - given a word, ensure that it complies with the
+ * rules for a wordle wprd, and that it is in the dictionary. Return
+ * the word in its canonical form as returned by groom().
+ ***********************************************************************/
+
+const wordle_word &commands::validate_word(const string &w)
 {
     string groomed = wordle_word::groom(w);
     if (groomed.empty()) {
@@ -231,6 +347,11 @@ const wordle_word &commands::validate_word(const string &w) const
     return *ww.value();
 }
 
+/************************************************************************
+ * check_started - throw an error if there have been no tries for the
+ * current word.
+ ***********************************************************************/
+
 void commands::check_started() const
 {
     if (the_wordle.size()==0) {
@@ -238,15 +359,54 @@ void commands::check_started() const
     }
 }
 
-const dictionary &commands::get_dict() const
+/************************************************************************
+ * check_finished - ensure we are at the end of the command line
+ ***********************************************************************/
+
+void commands::check_finished()
+{
+    string lexeme = next_arg(true);
+    if (!lexeme.empty()) {
+        throw syntax_exception("Unexpected items at end of command '%s...'", lexeme);
+    }
+}
+
+/************************************************************************
+ * get_dict - get the dictionary, which is held by the cwordle object
+ ***********************************************************************/
+
+dictionary &commands::get_dict()
 {
     return the_wordle.get_dictionary();
 }
+
+/************************************************************************
+ * display_time - display the result of a timming_reporter
+ ***********************************************************************/
 
 void commands::display_time(timing_reporter &timer, const string &label)
 {
     string r = timer.report("", label);
     cout << styled_text(r, styled_text::deep_blue, styled_text::color_none, styled_text::italic);
 }
+
+/************************************************************************
+ * keyword_table::find - find the given string in the keyword table.
+ * It must be a substring of one of the full commands, and
+ * at least as long as the minimal version.
+ ***********************************************************************/
+
+const commands::keyword *commands::keyword_table::find(const string &kw) const
+{
+    const keyword *result = NULL;
+    for (const auto &k : keywords) {
+        if (boost::starts_with(k.full, kw) && boost::starts_with(kw, k.minimal)) {
+            result = &k;
+            break;
+        }
+    }
+    return result;
+}
+
 
 

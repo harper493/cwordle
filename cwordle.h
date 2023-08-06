@@ -27,7 +27,7 @@ public:
     {
         return results.size();
     }
-    const dictionary &get_dictionary() const
+    dictionary &get_dictionary()
     {
         return my_dict;
     }

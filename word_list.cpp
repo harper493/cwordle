@@ -2,6 +2,24 @@
 #include "entropy.h"
 #include "timers.h"
 
+/************************************************************************
+ * word_list - representation of a list of words from the dictionary.
+ *
+ * The list can be 'unfilled', in which case the list hasn't been
+ * explicitly populated and the list consists of all words
+ * in the dictionary.
+ *
+ * The words are held as indices into the dictionary.
+ ***********************************************************************/
+
+/************************************************************************
+ * filter - give a match_target, return a word_list containing only
+ * the words from my list that also match the target.
+ *
+ * There are two cases, one for when the list is unfilled and one
+ * for when we have an explciit list of words.
+ ***********************************************************************/
+
 word_list word_list::filter(const wordle_word::match_target &mt) const
 {
     word_list result(my_dict);
@@ -29,6 +47,11 @@ word_list word_list::filter(const wordle_word::match_target &mt) const
     return result;
 }
 
+/************************************************************************
+ * sorted - return a word_list in which the words have been
+ * sorted into alphabetical order
+ ***********************************************************************/
+
 word_list word_list::sorted() const
 {
     word_list result(my_dict);
@@ -43,6 +66,11 @@ word_list word_list::sorted() const
     return result;
 }
 
+/************************************************************************
+ * fill - if the list if 'unfilled', then explicitly fill it in
+ * with the contents of the dictionary.
+ ***********************************************************************/
+
 void word_list::fill() const
 {
     if (unfilled) {
@@ -53,6 +81,19 @@ void word_list::fill() const
         }
     }
 }
+
+/************************************************************************
+ * entropy - calculate tne entropy of applying a given word to this list.
+ * We do this by finding the match_result for each word against the
+ * target, and counting the number of each distinct match result.
+ *
+ * Then we use the entropy() function to calculate the entropy of the
+ * resulting distribition.
+ *
+ * There are 1024 possible values of a match result, but in fact only
+ * 243 (3^5) of those are valid, since an exact match eclipses a partial
+ * match of the same letter. We don't try to take advantage of that.
+ ***********************************************************************/
 
 float word_list::entropy(const wordle_word &target) const
 {

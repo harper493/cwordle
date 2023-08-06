@@ -59,17 +59,7 @@ public:
         {
             keywords.emplace_back(kw);
         }
-        const keyword *find(const string &kw) const
-        {
-            const keyword *result = NULL;
-            for (const auto &k : keywords) {
-                if (boost::starts_with(k.full, kw) && boost::starts_with(kw, k.minimal)) {
-                    result = &k;
-                    break;
-                }
-            }
-            return result;
-        }
+        const keyword *find(const string &kw) const;
     };
 private:
     cwordle &the_wordle;
@@ -101,10 +91,11 @@ public:
 private:
     string next_arg(bool end_ok=false);
     optional<int> next_arg_int(bool end_ok=false);
-    const wordle_word &validate_word(const string &w) const;
+    const wordle_word &validate_word(const string &w);
     void show_error(const string &err);
     void check_started() const;
-    const dictionary &get_dict() const;
+    void check_finished();
+    dictionary &get_dict();
     void display_time(timing_reporter &timer, const string &label);
 };
 

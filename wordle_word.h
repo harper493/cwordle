@@ -111,7 +111,7 @@ public:
             return letter_mask((1 << (ALPHABET_SIZE+1)) - 1, 0);
         }
     };
-    class masks_t
+    class word_mask
     {
     public:
         typedef array<letter_mask, WORD_LENGTH> just_letters_t;
@@ -120,7 +120,7 @@ public:
     private:
         __m256i masks;
     public:
-        masks_t() : masks(_mm256_setzero_si256()) { };
+        word_mask() : masks(_mm256_setzero_si256()) { };
         const __m256i &as_m256i() const { return masks; };
         __m256i &as_m256i() { return masks; };
         iterator begin() { return as_letters().begin(); }
@@ -195,7 +195,7 @@ public:
     {
     public:
         struct letter_target {
-            masks_t mask;
+            word_mask mask;
             U16 count = 0;
             bool greater_ok = false;
         public:
@@ -216,9 +216,9 @@ public:
         letter_mask exact_letters;
         letter_mask absent_letters;
         letter_mask required_letters;
-        masks_t partial_mask;
-        masks_t only_partial_mask;
-        masks_t exact_mask;
+        word_mask partial_mask;
+        word_mask only_partial_mask;
+        word_mask exact_mask;
         U16 partial_match_count = 0;
         U16 exact_match_count = 0;
         vector<letter_target> letter_targets;
@@ -232,11 +232,11 @@ public:
         }
     };
 private:
-    masks_t exact_mask;
-    masks_t all_mask;
-    masks_t once_mask;
-    masks_t twice_mask;
-    masks_t thrice_mask;
+    word_mask exact_mask;
+    word_mask all_mask;
+    word_mask once_mask;
+    word_mask twice_mask;
+    word_mask thrice_mask;
     letter_mask all_letters;
     letter_mask once_letters;
     letter_mask twice_letters;
@@ -279,7 +279,7 @@ public:
 private:
     static __mmask8 to_mask(__m256i matched)
     {
-        __m256i zeros = _mm256_set1_epi32(0);
+        __m256i zeros = _mm256_setzero_si256();
         return _mm256_cmpgt_epu32_mask(matched, zeros);
     }
     static size_t count_matches(__m256i matched)

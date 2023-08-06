@@ -3,6 +3,16 @@
 #include "partial_sorted_list.h"
 
 /************************************************************************
+ * A cwordle object tracks the state of matching successive words
+ * against the target. For each word that has been tried,
+ * it tracks the match_target(combined word and match_result),
+ * and the list of still-permissible words.
+ *
+ * The functions are called form the commands object, in response
+ * to user-entered commands.
+ ***********************************************************************/
+
+/************************************************************************
  * load_words - load the default dictionary
  ***********************************************************************/
 
