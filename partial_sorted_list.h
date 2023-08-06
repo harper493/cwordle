@@ -52,6 +52,11 @@ public:
         if (entries.size() < max_size) {
             entries.emplace_back(k, v);
             worst_key = FLT_MAX;
+        } else if (max_size==1) {
+            if (v > entries[0].value) {
+                entries[0] = entry(k, v);
+                worst_key = v;
+            }
         } else {
             if (!sorted) {
                 reorder();
