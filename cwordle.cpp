@@ -12,6 +12,16 @@ void cwordle::load_words(const vector<string> &w)
 }
 
 /************************************************************************
+ * load_file - the the dictionary from a file. Return false if
+ * there is a problem with the file.
+ ***********************************************************************/
+
+bool cwordle::load_file(const string &filename)
+{
+    return my_dict.load_file(filename);
+}
+
+/************************************************************************
  * best - return the words that give the best entropy amongst
  * the remaining words.
  ***********************************************************************/

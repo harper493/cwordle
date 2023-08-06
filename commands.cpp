@@ -52,7 +52,9 @@ bool commands::do_command(const string &line)
                     timing_reporter tr;
                     (this->*(kw->my_fn))();
                     if (show_timing) {
-                        cout << formatted("Completed in %s", tr.show_time()) << "\n";
+                        cout << styled_text(formatted("Completed in %s", tr.show_time()),
+                                            styled_text::deep_blue, styled_text::color_none, styled_text::italic)
+                                         << "\n";
                     }
                 }
             } else {
@@ -79,8 +81,8 @@ void commands::do_best()
         cout << styled_text(formatted("%-7s %.3f", r2->second, r2->first), output_color) << "\n";
     }
     if (show_timing) {
-        cout << timers::match_timer.report("", "Match: ");
-        cout << timers::entropy_timer.report("", "Entropy: ");
+        display_time(timers::match_timer, "Match: ");
+        display_time(timers::entropy_timer, "Entropy: ");
     }
 }
 
@@ -174,7 +176,7 @@ void commands::do_try()
         cout << ww.styled_str(mr) << "\n";
     }
     if (show_timing) {
-        cout << timers::conforms_timer.report("", "Conforms: ");
+        display_time(timers::conforms_timer, "Conforms: ");
     }
 }
 
@@ -240,4 +242,11 @@ const dictionary &commands::get_dict() const
 {
     return the_wordle.get_dictionary();
 }
+
+void commands::display_time(timing_reporter &timer, const string &label)
+{
+    string r = timer.report("", label);
+    cout << styled_text(r, styled_text::deep_blue, styled_text::color_none, styled_text::italic);
+}
+
 

@@ -21,11 +21,52 @@ timing_reporter timers::entropy_timer(true);
 timing_reporter timers::match_timer(true);
 timing_reporter timers::conforms_timer(true);
 
+bool do_options(int argc, char *argv[])
+{
+    od.add_options()
+        ("help", "produce help message")
+        ("dict,d", po::value<string>()->default_value(""), "dictionary file name")
+        ("vocab,v", po::value<string>()->default_value(""), "select builtin vocabulary (wordle or other)")
+        ("time,t", "show timing information");
+    try {
+        po::store(po::parse_command_line(argc, argv, od), options);
+    } catch (std::exception &exc) {
+        cout << "error in command line: " << exc.what() << '\n';
+        return false;
+    }
+    po::notify(options);
+    if (options.count("help") > 0) {
+        cout << od << '\n';
+        return false;
+    }
+    return true;
+}
+
 void run()
 {
     cwordle cw;
-    cw.load_words(other_words);
+    string dict_file = options["dict"].as<string>();
+    if (dict_file.empty()) {
+        string vocab = options["vocab"].as<string>();
+        if (vocab.empty()) {
+            vocab = "other";
+        }
+        if (vocab=="other") {
+            cw.load_words(other_words);
+        } else if (vocab=="wordle") {
+            cw.load_words(wordle_words);
+        } else {
+            cout << formatted("Unknown vocabulary '%s'\n", vocab);
+            return;
+        }
+    } else {
+        if (!cw.load_file(dict_file)) {
+            cout << formatted("Failed to load dictionary file '%s'\n", dict_file);
+            return;
+        }
+    }
     commands cmds(cw);
+    cmds.set_timing(options.count("time") > 0);
     while (std::cin.good()) {
         cout << "cwordle> ";
         string line;
@@ -38,6 +79,9 @@ void run()
 
 int main(int argc, char *argv[])
 {
+    if (!do_options(argc, argv)) {
+        return 1;
+    }
     styled_text::set_renderer(styled_text::iso6429);
     run();
     return 0;

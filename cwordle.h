@@ -22,6 +22,7 @@ public:
     cwordle()
         : all_my_words(my_dict) { };
     void load_words(const vector<string> &w);
+    bool load_file(const string &filename);
     size_t size() const
     {
         return results.size();

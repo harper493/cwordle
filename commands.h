@@ -7,6 +7,8 @@
 #include "dictionary.h"
 #include <boost/algorithm/string/predicate.hpp>
 
+class timing_reporter;
+
 class commands
 {
 public:
@@ -74,10 +76,14 @@ private:
     string my_line;
     string rest_of_line;
     string cur_arg;
-    bool show_timing = true;
+    bool show_timing = false;
 public:
     commands(cwordle &cw);
     bool do_command(const string &line);
+    void set_timing(bool t)
+    {
+        show_timing = t;
+    }
 public:
     void do_best();
     void do_entropy();
@@ -99,6 +105,7 @@ private:
     void show_error(const string &err);
     void check_started() const;
     const dictionary &get_dict() const;
+    void display_time(timing_reporter &timer, const string &label);
 };
 
 #define KEYWORDS(NAME) commands::keyword_table NAME ( vector<commands::keyword> {

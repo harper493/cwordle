@@ -1,5 +1,29 @@
 #include "dictionary.h"
 #include "random.h"
+#include <fstream>
+
+/************************************************************************
+ * load_file - load words from a file. Return false if there was
+ * a problem.
+ ***********************************************************************/
+
+bool dictionary::load_file(const string &filename)
+{
+    bool result = false;
+    std::ifstream istr(filename);
+    if (istr.good()) {
+        result = true;
+        string line;
+        while (istr.good()) {
+            getline(istr, line);
+            if (!line.empty()) {
+                insert(line);
+            }
+        }
+    }
+    return result;
+}
+
 
 bool dictionary::insert(const string &w)
 {

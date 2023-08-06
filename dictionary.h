@@ -42,6 +42,7 @@ public:
             insert(w);
         }
     }
+    bool load_file(const string &filename);
 };
 
 #endif
