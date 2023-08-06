@@ -30,7 +30,7 @@ float add_horizontal(__m256 values)
  * This implementation uses AVX and also some mathematical trickery
  * to avoid needing to pre-calculate the sum.
  *
- * This code is a vectorized version of entrop_slow (below). The only
+ * This code is a vectorized version of entropy_slow (below). The only
  * complication is that since log(0) is infinite, we have to replace
  * zeros by 1 before calculting the log.
  *
@@ -47,16 +47,18 @@ float entropy(const vector<float> &data)
     size_t n = 0;
     for (size_t i = 0; i < data.size(); i += 8) {
         __m256 d = _mm256_loadu_ps(&data[i]);
-        sum256 = _mm256_add_ps(sum256, d);
         __mmask8 nonzero_mask = ~(_mm512_cmpeq_ps_mask(_mm512_castps256_ps512(d), zeros));
-        n += __builtin_popcount(nonzero_mask);
-        __m256 nonzero = _mm256_mask_blend_ps(nonzero_mask, ones, d);
-        __m256 l = log256_ps(nonzero);
-        ent256 = _mm256_fmadd_ps(l, d, ent256);
+        if (nonzero_mask != 0) {
+            sum256 = _mm256_add_ps(sum256, d);
+            n += __builtin_popcount(nonzero_mask);
+            __m256 nonzero = _mm256_mask_blend_ps(nonzero_mask, ones, d);
+            __m256 l = log256_ps(nonzero);
+            ent256 = _mm256_fmadd_ps(l, d, ent256);
+        }
     }
     float ent = add_horizontal(ent256);
     float sum = add_horizontal(sum256);
-    float result = (((-(ent - sum * log(sum)) / sum))); // / log(n));
+    float result = (((-(ent - sum * log(sum)) / sum)));
     if (isnan(result)) {
         result = 0.0;
     }
@@ -83,7 +85,7 @@ float entropy_slow(const vector<float> &data)
             n += 1;
         }
     }
-    return (((-(e - sum * log(sum)) / sum))); // / log2(n));    
+    return (((-(e - sum * log(sum)) / sum)));
 }
 
 /************************************************************************
@@ -104,5 +106,5 @@ float entropy_slowest(const vector<float> &data)
             n += 1;
         }
     }
-    return -e; //  / log2(n);
+    return -e;
 }

@@ -1,6 +1,8 @@
 #include "commands.h"
 #include "styled_text.h"
 #include "tests.h"
+#include "timing_reporter.h"
+#include "timers.h"
 #include <boost/algorithm/string.hpp>
 #include <regex>
 
@@ -24,6 +26,8 @@ KEYWORDS_END()
 
 regex rx_command("(\\S+)\\s*(.*)", std::regex_constants::ECMAScript);
 
+auto output_color = styled_text::green;
+
 commands::commands(cwordle &cw)
     : the_wordle(cw)
 {
@@ -34,6 +38,9 @@ bool commands::do_command(const string &line)
 {
     bool result = true;
     my_line = rest_of_line = line;
+    timers::entropy_timer.reset();
+    timers::match_timer.reset();
+    timers::conforms_timer.reset();
     if (!line.empty()) {
         try {
             string cmd = next_arg();
@@ -42,7 +49,11 @@ bool commands::do_command(const string &line)
                 if (kw->full=="exit") {
                     result = false;
                 } else {
+                    timing_reporter tr;
                     (this->*(kw->my_fn))();
+                    if (show_timing) {
+                        cout << formatted("Completed in %s", tr.show_time()) << "\n";
+                    }
                 }
             } else {
                 throw syntax_exception("Unknown command '%s'", cmd);
@@ -65,7 +76,11 @@ void commands::do_best()
         }
     }
     for (auto r2=result_map.rbegin(); r2!=result_map.rend(); ++r2) {
-        cout << styled_text(formatted("%-7s %.3f", r2->second, r2->first), styled_text::green) << "\n";
+        cout << styled_text(formatted("%-7s %.3f", r2->second, r2->first), output_color) << "\n";
+    }
+    if (show_timing) {
+        cout << timers::match_timer.report("", "Match: ");
+        cout << timers::entropy_timer.report("", "Entropy: ");
     }
 }
 
@@ -73,7 +88,7 @@ void commands::do_entropy()
 {
     const wordle_word &w = validate_word(next_arg());
     float entropy = the_wordle.entropy(w);
-    cout << styled_text(formatted("Entropy of '%s' is %.3f", w.str(), entropy), styled_text::green)
+    cout << styled_text(formatted("Entropy of '%s' is %.3f", w.str(), entropy), output_color)
          << "\n";
 }
 
@@ -94,7 +109,7 @@ void commands::do_help()
         throw syntax_exception("'%s' is not a wordle command", topic);
     }
     for (const auto &i : cmds) {
-        cout << styled_text(formatted("%-10s", i.first), styled_text::green)
+        cout << styled_text(formatted("%-10s", i.first), output_color)
              << styled_text(i.second->help, styled_text::magenta)
              << "\n";
     }
@@ -125,16 +140,16 @@ void commands::do_remaining()
         suffix = ", ...";
     }
     for (size_t i : irange(0, sz)) {
-        words.emplace_back(the_wordle.get_dictionary().get_string(wl[i]));
+        words.emplace_back(get_dict().get_string(wl[i]));
     }
     string words2 = boost::algorithm::join(words, ", ");
-    cout << styled_text(formatted("%d words remaining: %s%s", wl.size(), words2, suffix)) << "\n";
+    cout << styled_text(formatted("%d words remaining: %s%s", wl.size(), words2, suffix), output_color) << "\n";
 }
 
 void commands::do_reveal()
 {
     cout << styled_text(formatted("The current word is '%s'", the_wordle.get_current_word().str()),
-                        styled_text::green)
+                        output_color)
          << "\n";
 }
 
@@ -152,7 +167,15 @@ void commands::do_try()
 {
     const wordle_word &ww = validate_word(next_arg());
     auto mr = the_wordle.try_word(ww);
-    cout << ww.styled_str(mr) << "\n";
+    if (the_wordle.remaining().size()==1 && ww==the_wordle.get_current_word()) {
+        cout << styled_text(formatted("Success! The word is '%s'", the_wordle.get_current_word().str()),
+                            styled_text::magenta) << "\n";
+    } else {
+        cout << ww.styled_str(mr) << "\n";
+    }
+    if (show_timing) {
+        cout << timers::conforms_timer.report("", "Conforms: ");
+    }
 }
 
 void commands::do_undo()
@@ -199,7 +222,7 @@ const wordle_word &commands::validate_word(const string &w) const
     if (groomed.empty()) {
         throw syntax_exception("'%s' is not a valid wordle word (too long or short, too many repeats)", w);
     }
-    auto ww = the_wordle.get_dictionary().find_word(groomed);
+    auto ww = get_dict().find_word(groomed);
     if (!ww) {
         throw syntax_exception("'%s' is not in the dictionary", groomed);
     }
@@ -211,5 +234,10 @@ void commands::check_started() const
     if (the_wordle.size()==0) {
         throw syntax_exception("You haven't tried anything yet");
     }
+}
+
+const dictionary &commands::get_dict() const
+{
+    return the_wordle.get_dictionary();
 }
 

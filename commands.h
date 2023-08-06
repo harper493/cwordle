@@ -4,6 +4,7 @@
 #include "types.h"
 #include "cwordle.h"
 #include "formatted.h"
+#include "dictionary.h"
 #include <boost/algorithm/string/predicate.hpp>
 
 class commands
@@ -73,6 +74,7 @@ private:
     string my_line;
     string rest_of_line;
     string cur_arg;
+    bool show_timing = true;
 public:
     commands(cwordle &cw);
     bool do_command(const string &line);
@@ -96,6 +98,7 @@ private:
     const wordle_word &validate_word(const string &w) const;
     void show_error(const string &err);
     void check_started() const;
+    const dictionary &get_dict() const;
 };
 
 #define KEYWORDS(NAME) commands::keyword_table NAME ( vector<commands::keyword> {

@@ -15,13 +15,13 @@ private:
     bool paused = false;
     size_t start_count = 0;
 public:
-    timing_reporter(p=false)
+    timing_reporter(bool p=false)
         : start(high_resolution_clock::now()), paused(p) {};
     void pause()
     {
         if (!paused) {
             stop = high_resolution_clock::now();
-            auto duration = duration_cast<microseconds>(stop - start);
+            auto duration = duration_cast<nanoseconds>(stop - start);
             total_duration += duration.count();
             paused = true;
         }
@@ -44,17 +44,23 @@ public:
     {
         total_duration += other.total_duration;
         start_count += other.start_count;
+        return *this;
     }
-    string show_time(float us)
+    string show_time()
     {
-        if (us > 1000000) {
-            return formatted("%.3f S", us / 1000000);
-        } else if (us > 1000) {
-            return formatted("%.3f mS", us/ 1000);
-        } else if (us < 1) {
-            return formatted("%.3f nS", us * 1000);
+        pause();
+        return show_time(total_duration);
+    }
+    string show_time(float ns) const
+    {
+        if (ns > 1e9) {
+            return formatted("%.3f S", ns / 1e9);
+        } else if (ns > 1e6) {
+            return formatted("%.3f mS", ns/ 1e6);
+        } else if (ns > 1e3) {
+            return formatted("%.3f uS", ns / 1e3);
         } else {
-            return formatted("%.3f uS", us);
+            return formatted("%.3f nS", ns);
         }
     }
     string report(const string &what, const string &prefix="")
@@ -64,8 +70,9 @@ public:
     string report(size_t count, const string &what, const string &prefix="")
     {
         pause();
-        return formatted("%s%d %s in %s, %s each\n",
-                         prefix, count, what, show_time(total_duration),
+        string w = what.empty() ? "" : what + " ";
+        return formatted("%s%d %sin %s, %s each\n",
+                         prefix, count, w, show_time(total_duration),
                          show_time(total_duration / count));
     }
     void show(const string &what, const string &prefix="")

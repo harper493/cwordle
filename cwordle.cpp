@@ -2,15 +2,13 @@
 #include "random.h"
 #include "partial_sorted_list.h"
 
-extern vector<string> wordle_words;
-
 /************************************************************************
  * load_words - load the default dictionary
  ***********************************************************************/
 
-void cwordle::load_words()
+void cwordle::load_words(const vector<string> &w)
 {
-    my_dict.load(wordle_words);
+    my_dict.load(w);
 }
 
 /************************************************************************

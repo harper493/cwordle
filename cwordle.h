@@ -21,7 +21,7 @@ private:
 public:
     cwordle()
         : all_my_words(my_dict) { };
-    void load_words();
+    void load_words(const vector<string> &w);
     size_t size() const
     {
         return results.size();
@@ -38,7 +38,6 @@ public:
         return results;
     }
     const word_list &remaining();
-    string reveal();
     bool set_word(const string &w);
     wordle_word::match_result try_word(const wordle_word &w);
     void undo();

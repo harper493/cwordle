@@ -2,6 +2,7 @@
 #include "formatted.h"
 #include "styled_text.h"
 #include "commands.h"
+#include "timers.h"
 #include <istream>
 #include <fstream>
 #include <sstream>
@@ -13,10 +14,17 @@ namespace po = boost::program_options;
 po::options_description od("Available options");
 po::variables_map options;
 
+extern vector<string> wordle_words;
+extern vector<string> other_words;
+
+timing_reporter timers::entropy_timer(true);
+timing_reporter timers::match_timer(true);
+timing_reporter timers::conforms_timer(true);
+
 void run()
 {
     cwordle cw;
-    cw.load_words();
+    cw.load_words(other_words);
     commands cmds(cw);
     while (std::cin.good()) {
         cout << "cwordle> ";
