@@ -4,6 +4,12 @@
 #include "types.h"
 #include <float.h>
 
+/************************************************************************
+ * partial_sorted_list class - maintain a list of bounded size
+ * of key/value pairs, sorted based on the value (decreasing by default,
+ * increasing if 'decreasing' is false at construction).
+ ***********************************************************************/
+
 template<class KEY, class VALUE>
 class partial_sorted_list
 {
@@ -36,7 +42,7 @@ private:
     bool sorted = false;
     VALUE worst_key = FLT_MAX;
 public:
-    partial_sorted_list(size_t sz=0)
+    partial_sorted_list(size_t sz=1, bool decreasing=true)
         : max_size(sz)
     {
         entries.reserve(max_size);
@@ -100,8 +106,12 @@ private:
     void reorder()
     {
         if (!sorted) {
-            std::partial_sort(entries.begin(), entries.begin() + max_size, entries.end(),
-                              [](const entry &e1, const entry &e2){ return e2 < e1; });
+            if (decreasing) {
+                std::partial_sort(entries.begin(), entries.begin() + max_size, entries.end(),
+                                  [](const entry &e1, const entry &e2){ return e2 < e1; });
+            } else {
+                std::partial_sort(entries.begin(), entries.begin() + max_size, entries.end());
+            }
             if (entries.size() > max_size) {
                 entries.resize(max_size);
             }
