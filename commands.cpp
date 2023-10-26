@@ -229,6 +229,7 @@ void commands::do_result()
     if (!mr.parse(next_arg())) {
         throw syntax_exception("match string must contain only 0 for miss, 1 for partial match, 2 for exact match");
     }
+    check_finished();
     the_wordle.set_result(word, mr);
 }
 
