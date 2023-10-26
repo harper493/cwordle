@@ -30,6 +30,7 @@ KEYWORD("help", "h", do_help, "show help text")
 KEYWORD("new", "n", do_new, "select a new random word")
 KEYWORD("recap", "rec", do_recap, "recap worsd tried so far")
 KEYWORD("remaining", "rem", do_remaining, "show remaining matching words")
+KEYWORD("result", "res", do_result, "supply result of a test")
 KEYWORD("reveal", "rev", do_reveal, "reveal the current word (i.e. cheat)")
 KEYWORD("set", "set", do_set, "set an explicit word")
 KEYWORD("test", "test", do_test, "run numbered development test")
@@ -212,6 +213,23 @@ void commands::do_remaining()
     }
     string words2 = boost::algorithm::join(words, ", ");
     cout << styled_text(formatted("%d words remaining: %s%s", wl.size(), words2, suffix), output_color) << "\n";
+}
+
+/************************************************************************
+ * do_result - take a test result of the form <word> <match result>
+ * and feed it into the current word, e.g:
+ *
+ * result plank 10210
+ ***********************************************************************/
+
+void commands::do_result()
+{
+    wordle_word word = validate_word(next_arg());
+    wordle_word::match_result mr;
+    if (!mr.parse(next_arg())) {
+        throw syntax_exception("match string must contain only 0 for miss, 1 for partial match, 2 for exact match");
+    }
+    the_wordle.set_result(word, mr);
 }
 
 /************************************************************************

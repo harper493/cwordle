@@ -298,8 +298,9 @@ wordle_word::match_result wordle_word::match(const wordle_word &target) const
  * This is used by the unit tests.
  ***********************************************************************/
 
-void wordle_word::match_result::parse(const string &m)
+bool wordle_word::match_result::parse(const string &m)
 {
+    bool result = true;
     U16 e = 0;
     U16 p = 0;
     if (m.size()==WORD_LENGTH) {
@@ -308,11 +309,17 @@ void wordle_word::match_result::parse(const string &m)
                 p |= (1 << i);
             } else if (m[i]=='2') {
                 e |= (1 << i);
+            } else if (m[i]!='0') {
+                result = false;
+                break;
             }
         }
+    } else {
+        result ='false';
     }
     p |= e;
     *this = match_result(e, p);
+    return result;
 }
 
 /************************************************************************

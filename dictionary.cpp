@@ -82,6 +82,3 @@ string dictionary::get_random() const
 {
     return get_string(random::get_int(size()));
 }
-new
-try aloes
-        

@@ -40,10 +40,11 @@ private:
     vector<entry> entries;
     size_t max_size;
     bool sorted = false;
+    bool decreasing = true;
     VALUE worst_key = FLT_MAX;
 public:
-    partial_sorted_list(size_t sz=1, bool decreasing=true)
-        : max_size(sz)
+    partial_sorted_list(size_t sz=1, bool d=true)
+        : max_size(sz), decreasing(d)
     {
         entries.reserve(max_size);
     };

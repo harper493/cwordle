@@ -56,6 +56,12 @@ string tests::t(const string &w1, const string &w2, const string &correct,
 
 void tests::test1()
 {
+    cout << t("ploop", "poppy", "21100",
+              { "ploop", "plopo" },
+              { "plank", "popps", "poops" }) << '\n';
+    cout << t("poppy", "ploop", "20101",
+              { "poppy", "prapo", "pppox" },
+              { "ppops", "pppoo" }) << '\n';
     cout << t("beech", "evade", "10001",
               { "beers", "beech", "newer" },
               { "never", "eiger", "eager", "begin" }) << '\n';
@@ -95,12 +101,6 @@ void tests::test1()
     cout << t("steep", "pappy", "10000",
               { "steep", "opens" },
               { "spoop", "hoppy", "hospy", "proof" }) << '\n';
-    cout << t("ploop", "poppy", "21100",
-              { "ploop", "plopo" },
-              { "plank", "popps", "poops" }) << '\n';
-    cout << t("poppy", "ploop", "20101",
-              { "poppy", "prapo", "pppox" },
-              { "ppops", "pppoo" }) << '\n';
     cout << t("ethor", "etate", "22000",
               { "ethor", "etrik" },
               { "etter", "spets", "etexx", "ettox" }) << '\n';

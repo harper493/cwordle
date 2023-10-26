@@ -109,6 +109,19 @@ bool cwordle::set_word(const string &w)
 }
 
 /************************************************************************
+ * set_result - add a word and its result to the current result list
+ ***********************************************************************/
+
+void cwordle::set_result(const wordle_word &w, const wordle_word::match_result &mr)
+{
+    results.emplace_back(w, mr);
+    wordle_word::match_target mt(w, mr);
+    word_list base_wl(my_dict);
+    const word_list &wl = word_lists.empty() ? base_wl : word_lists.back();
+    word_lists.emplace_back(wl.filter(mt));
+}
+
+/************************************************************************
  * try_word - try a word against the current word and return
  * the results of the match
  ***********************************************************************/
@@ -116,11 +129,7 @@ bool cwordle::set_word(const string &w)
 wordle_word::match_result cwordle::try_word(const wordle_word &w)
 {
     wordle_word::match_result mr(w.match(current_word));
-    results.emplace_back(w, mr);
-    wordle_word::match_target mt(w, mr);
-    word_list base_wl(my_dict);
-    const word_list &wl = word_lists.empty() ? base_wl : word_lists.back();
-    word_lists.emplace_back(wl.filter(mt));
+    set_result(w, mr);
     return mr;
 }
 

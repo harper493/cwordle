@@ -40,6 +40,7 @@ public:
     }
     const word_list &remaining();
     bool set_word(const string &w);
+    void set_result(const wordle_word &w, const wordle_word::match_result &mr);
     wordle_word::match_result try_word(const wordle_word &w);
     void undo();
     bool add_word(const string &w);

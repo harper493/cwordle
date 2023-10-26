@@ -82,6 +82,7 @@ public:
     void do_new();
     void do_recap();
     void do_remaining();
+    void do_result();
     void do_reveal();
     void do_set();
     void do_test();

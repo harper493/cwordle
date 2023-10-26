@@ -183,7 +183,7 @@ public:
         {
             return (partial_match << 5) | exact_match;
         }
-        void parse(const string &s);
+        bool parse(const string &s);
         static U16 good_bits()
         {
             return (1 << WORD_LENGTH) - 1;
