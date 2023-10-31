@@ -46,6 +46,9 @@ typedef signed int S32;
 typedef signed short S16;
 typedef signed char S8;
 
+#define likely(X) __builtin_expect(!!(X), 1)
+#define unlikely(X) __builtin_expect(!!(X), 0)
+
 #define WORD_LENGTH 5
 #define ALPHABET_SIZE 26
 

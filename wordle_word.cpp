@@ -72,6 +72,8 @@ const styled_text::color_e unmatched_color = styled_text::black;
 const styled_text::color_e matched_color = styled_text::green;
 const styled_text::color_e part_matched_color = styled_text::orange;
 
+bool wordle_word::verbose = false;
+
 /************************************************************************
  * Utility functions
  ***********************************************************************/
@@ -288,38 +290,76 @@ string wordle_word::word_mask::str() const
  *    word_mask.
  ***********************************************************************/
 
-wordle_word::match_result wordle_word::match(const wordle_word &target) const
+#define SHOW_MASK(VAR) cout << formatted("%20s: %s\n", #VAR, VAR.str())
+#define SHOW_M256(VAR) cout << formatted("%20s: %s\n", #VAR, wms(VAR))
+
+wordle_word::match_result wordle_word::match_verbose(const wordle_word &target) const
 {
+    SHOW_MASK(exact_mask);
+    SHOW_MASK(target.exact_mask);
     __m256i exact = _mm256_and_si256(exact_mask.as_m256i(), target.exact_mask.as_m256i());
+    SHOW_M256(exact);
     U32 exact_letters = or256_i32(exact);
     __m256i target_all = _mm256_set1_epi32(target.all_letters.get() & ~exact_letters);
     __m256i once_m = _mm256_andnot_si256(exact, _mm256_load_si256(&once_mask.as_m256i()));
+    SHOW_M256(target_all);
+    SHOW_M256(once_m);
     __m256i partial1 = _mm256_and_si256(target_all, once_m);
+    SHOW_M256(partial1);
     __m256i target_twice = _mm256_set1_epi32(target.twice_letters.get() | target.thrice_letters.get());
+    SHOW_M256(target_twice);
     __m256i twice_m = _mm256_andnot_si256(exact, _mm256_loadu_si256(&twice_mask.as_m256i()));
+    SHOW_M256(twice_m);
     __m256i partial2 = _mm256_or_si256(partial1, _mm256_and_si256(target_twice, twice_m));
+    SHOW_M256(partial2);
     __m256i target_thrice = _mm256_set1_epi32(target.thrice_letters.get());
     __m256i thrice_m = _mm256_loadu_si256(&thrice_mask.as_m256i());
     __m256i partial3 = _mm256_or_si256(partial2, _mm256_and_si256(target_thrice, thrice_m));
     __m256i partial4 = _mm256_or_si256(partial3, exact);
+    SHOW_M256(partial3);
+    SHOW_M256(partial4);
     __m256i zeros = _mm256_setzero_si256();
     __mmask8 exact_result = _mm256_cmpgt_epu32_mask(exact, zeros);
     __mmask8 partial_result = _mm256_cmpgt_epu32_mask(partial4, zeros);
-#if 0
-#define SHOW_MASK(VAR) cout << formatted("%20s: %s\n", #VAR, VAR.str())
-#define SHOW_M256(VAR) cout << formatted("%20s: %s\n", #VAR, wms(VAR))
+    return match_result(exact_result, partial_result);
+}
+
+#undef SHOW_MASK
+#undef SHOW_M256
+#define SHOW_MASK(VAR)
+#define SHOW_M256(VAR)
+
+wordle_word::match_result wordle_word::match(const wordle_word &target) const
+{
+    if (unlikely(verbose)) {
+        return match_verbose(target);
+    }
     SHOW_MASK(exact_mask);
     SHOW_MASK(target.exact_mask);
-    SHOW_M256(target_all);
+    __m256i exact = _mm256_and_si256(exact_mask.as_m256i(), target.exact_mask.as_m256i());
     SHOW_M256(exact);
+    U32 exact_letters = or256_i32(exact);
+    __m256i target_all = _mm256_set1_epi32(target.all_letters.get() & ~exact_letters);
+    __m256i once_m = _mm256_andnot_si256(exact, _mm256_load_si256(&once_mask.as_m256i()));
+    SHOW_M256(target_all);
     SHOW_M256(once_m);
+    __m256i partial1 = _mm256_and_si256(target_all, once_m);
     SHOW_M256(partial1);
+    __m256i target_twice = _mm256_set1_epi32(target.twice_letters.get() | target.thrice_letters.get());
     SHOW_M256(target_twice);
+    __m256i twice_m = _mm256_andnot_si256(exact, _mm256_loadu_si256(&twice_mask.as_m256i()));
     SHOW_M256(twice_m);
+    __m256i partial2 = _mm256_or_si256(partial1, _mm256_and_si256(target_twice, twice_m));
     SHOW_M256(partial2);
+    __m256i target_thrice = _mm256_set1_epi32(target.thrice_letters.get());
+    __m256i thrice_m = _mm256_loadu_si256(&thrice_mask.as_m256i());
+    __m256i partial3 = _mm256_or_si256(partial2, _mm256_and_si256(target_thrice, thrice_m));
+    __m256i partial4 = _mm256_or_si256(partial3, exact);
     SHOW_M256(partial3);
     SHOW_M256(partial4);
-#endif
+    __m256i zeros = _mm256_setzero_si256();
+    __mmask8 exact_result = _mm256_cmpgt_epu32_mask(exact, zeros);
+    __mmask8 partial_result = _mm256_cmpgt_epu32_mask(partial4, zeros);
     return match_result(exact_result, partial_result);
 }
 

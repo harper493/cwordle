@@ -26,6 +26,7 @@ bool do_options(int argc, char *argv[])
     od.add_options()
         ("help", "produce help message")
         ("dict,d", po::value<string>()->default_value(""), "dictionary file name")
+        ("verbose,V", "show details of comparison operations")
         ("vocab,v", po::value<string>()->default_value(""), "select builtin vocabulary (wordle or other)")
         ("time,t", "show timing information");
     try {
@@ -67,6 +68,7 @@ void run()
     }
     commands cmds(cw);
     cmds.set_timing(options.count("time") > 0);
+    wordle_word::set_verbose(options.count("verbose") > 0);
     while (std::cin.good()) {
         cout << "cwordle> ";
         string line;

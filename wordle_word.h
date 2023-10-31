@@ -248,6 +248,7 @@ private:
     letter_mask twice_letters;
     letter_mask thrice_letters;
     text_t text;
+    static bool verbose;
 public:
     wordle_word()
     {
@@ -280,6 +281,7 @@ public:
     }
     styled_text styled_str(const match_result &mr) const;
     match_result match(const wordle_word &target) const;
+    match_result match_verbose(const wordle_word &target) const;
     letter_mask masked_letters(U16 mask) const;
     word_mask get_exact_mask() const { return exact_mask; };
     word_mask get_all_mask() const { return all_mask; };
@@ -291,6 +293,7 @@ public:
     letter_mask get_twice_letters() const { return twice_letters; };
     letter_mask get_thrice_letters() const { return thrice_letters; };
     static string groom(const string &w);
+    static void set_verbose(bool v) { verbose = v; };
 private:
     static __mmask8 to_mask(__m256i matched)
     {
