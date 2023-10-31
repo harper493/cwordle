@@ -95,6 +95,9 @@ void tests::test1()
     cout << t("spoop", "pippy", "10100",
               { "spoop" },
               { "popop", "poopp" }) << '\n';
+    cout << t("visas", "adman", "00020",
+              {  },
+              {  }) << '\n';
     cout << t("poppy", "steep", "00001",
               { "poppy", "ploof", "popov" },
               { "creep" }) << '\n';

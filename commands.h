@@ -78,6 +78,7 @@ public:
     void do_best();
     void do_entropy();
     void do_exit();
+    void do_explain();
     void do_help();
     void do_new();
     void do_recap();
@@ -92,7 +93,7 @@ public:
 private:
     string next_arg(bool end_ok=false);
     optional<int> next_arg_int(bool end_ok=false);
-    const wordle_word &validate_word(const string &w);
+    wordle_word validate_word(const string &w);
     void show_error(const string &err);
     void check_started() const;
     void check_finished();

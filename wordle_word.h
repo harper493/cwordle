@@ -121,6 +121,12 @@ public:
         __m256i masks;
     public:
         word_mask() : masks(_mm256_setzero_si256()) { };
+        word_mask(__m256i m) : masks(m) { };
+        word_mask &operator=(const word_mask &other)
+        {
+            masks = other.masks;
+            return *this;
+        }
         const __m256i &as_m256i() const { return masks; };
         __m256i &as_m256i() { return masks; };
         iterator begin() { return as_letters().begin(); }
@@ -275,6 +281,15 @@ public:
     styled_text styled_str(const match_result &mr) const;
     match_result match(const wordle_word &target) const;
     letter_mask masked_letters(U16 mask) const;
+    word_mask get_exact_mask() const { return exact_mask; };
+    word_mask get_all_mask() const { return all_mask; };
+    word_mask get_once_mask() const { return once_mask; };
+    word_mask get_twice_mask() const { return twice_mask; };
+    word_mask get_thrice_mask() const { return thrice_mask; };
+    letter_mask get_all_letters() const { return all_letters; };
+    letter_mask get_once_letters() const { return once_letters; };
+    letter_mask get_twice_letters() const { return twice_letters; };
+    letter_mask get_thrice_letters() const { return thrice_letters; };
     static string groom(const string &w);
 private:
     static __mmask8 to_mask(__m256i matched)
@@ -288,5 +303,8 @@ private:
     }
 friend class match_target;
 };
+
+wordle_word::word_mask wm(__m256i m);
+string wms(__m256i m);
 
 #endif

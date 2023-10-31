@@ -26,6 +26,7 @@ KEYWORDS(command_list)
 KEYWORD("best", "b", do_best, "show best word(s) to filter remaining words")
 KEYWORD("entropy", "ent", do_entropy, "show entropy for a word against current remaining")
 KEYWORD("exit", "ex", do_exit, "exit cwordle")
+KEYWORD("explain", "exp", do_explain, "explain how a word is analysed")
 KEYWORD("help", "h", do_help, "show help text")
 KEYWORD("new", "n", do_new, "select a new random word")
 KEYWORD("recap", "rec", do_recap, "recap worsd tried so far")
@@ -139,6 +140,25 @@ void commands::do_entropy()
 
 void commands::do_exit()
 {
+}
+
+/************************************************************************
+ * do_explain - show all the masks of a given word
+ ***********************************************************************/
+
+void commands::do_explain()
+{
+    wordle_word w(next_arg());
+    check_finished();
+    cout << formatted("%20s: %s\n", "exact_mask", w.get_exact_mask().str());
+    cout << formatted("%20s: %s\n", "all_mask", w.get_all_mask().str());
+    cout << formatted("%20s: %s\n", "once_mask", w.get_once_mask().str());
+    cout << formatted("%20s: %s\n", "twice_mask", w.get_twice_mask().str());
+    cout << formatted("%20s: %s\n", "thrice_mask", w.get_thrice_mask().str());
+    cout << formatted("%20s: %s\n", "all_letters", w.get_all_letters().str());
+    cout << formatted("%20s: %s\n", "once_letters", w.get_once_letters().str());
+    cout << formatted("%20s: %s\n", "twice_letters", w.get_twice_letters().str());
+    cout << formatted("%20s: %s\n", "thrice_letters", w.get_thrice_letters().str());    
 }
 
 /************************************************************************
@@ -353,7 +373,7 @@ optional<int> commands::next_arg_int(bool end_ok)
  * the word in its canonical form as returned by groom().
  ***********************************************************************/
 
-const wordle_word &commands::validate_word(const string &w)
+wordle_word commands::validate_word(const string &w)
 {
     string groomed = wordle_word::groom(w);
     if (groomed.empty()) {
@@ -361,9 +381,9 @@ const wordle_word &commands::validate_word(const string &w)
     }
     auto ww = get_dict().find_word(groomed);
     if (!ww) {
-        throw syntax_exception("'%s' is not in the dictionary", groomed);
+        // throw syntax_exception("'%s' is not in the dictionary", groomed);
     }
-    return *ww.value();
+    return wordle_word(groomed);
 }
 
 /************************************************************************

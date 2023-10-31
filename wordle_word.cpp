@@ -1,5 +1,6 @@
 #include "wordle_word.h"
 #include "styled_text.h"
+#include "formatted.h"
 #include <cctype>
 
 /************************************************************************
@@ -70,6 +71,25 @@
 const styled_text::color_e unmatched_color = styled_text::black;
 const styled_text::color_e matched_color = styled_text::green;
 const styled_text::color_e part_matched_color = styled_text::orange;
+
+/************************************************************************
+ * Utility functions
+ ***********************************************************************/
+
+/************************************************************************
+ * or256_i32 - find the logical or of the 8 3-bit ints in an __m256i
+ ***********************************************************************/
+
+U32 or256_i32(__m256i x)
+{
+    __m256i x0 = _mm256_permute2x128_si256(x,x,1);
+    __m256i x1 = _mm256_or_si256(x,x0);
+    __m256i x2 = _mm256_shuffle_epi32(x1,0b01001110);
+    __m256i x3 = _mm256_or_si256(x1,x2);
+    __m256i x4 = _mm256_shuffle_epi32(x3, 0b11100001);
+    __m256i x5 = _mm256_or_si256(x3, x4);
+    return _mm_cvtsi128_si32(_mm256_castsi256_si128(x5)) ;
+}
 
 /************************************************************************
  * set_word - set up a wordle_wodr for a particular 5-letter word, setting
@@ -271,19 +291,35 @@ string wordle_word::word_mask::str() const
 wordle_word::match_result wordle_word::match(const wordle_word &target) const
 {
     __m256i exact = _mm256_and_si256(exact_mask.as_m256i(), target.exact_mask.as_m256i());
-    __m256i target_all = _mm256_set1_epi32(target.all_letters.get());
+    U32 exact_letters = or256_i32(exact);
+    __m256i target_all = _mm256_set1_epi32(target.all_letters.get() & ~exact_letters);
     __m256i once_m = _mm256_andnot_si256(exact, _mm256_load_si256(&once_mask.as_m256i()));
-    __m256i partial = _mm256_and_si256(target_all, once_m);
+    __m256i partial1 = _mm256_and_si256(target_all, once_m);
     __m256i target_twice = _mm256_set1_epi32(target.twice_letters.get() | target.thrice_letters.get());
     __m256i twice_m = _mm256_andnot_si256(exact, _mm256_loadu_si256(&twice_mask.as_m256i()));
-    partial = _mm256_or_si256(partial, _mm256_and_si256(target_twice, twice_m));
+    __m256i partial2 = _mm256_or_si256(partial1, _mm256_and_si256(target_twice, twice_m));
     __m256i target_thrice = _mm256_set1_epi32(target.thrice_letters.get());
     __m256i thrice_m = _mm256_loadu_si256(&thrice_mask.as_m256i());
-    partial = _mm256_or_si256(partial, _mm256_and_si256(target_thrice, thrice_m));
-    partial = _mm256_or_si256(partial, exact);
+    __m256i partial3 = _mm256_or_si256(partial2, _mm256_and_si256(target_thrice, thrice_m));
+    __m256i partial4 = _mm256_or_si256(partial3, exact);
     __m256i zeros = _mm256_setzero_si256();
     __mmask8 exact_result = _mm256_cmpgt_epu32_mask(exact, zeros);
-    __mmask8 partial_result = _mm256_cmpgt_epu32_mask(partial, zeros);
+    __mmask8 partial_result = _mm256_cmpgt_epu32_mask(partial4, zeros);
+#if 0
+#define SHOW_MASK(VAR) cout << formatted("%20s: %s\n", #VAR, VAR.str())
+#define SHOW_M256(VAR) cout << formatted("%20s: %s\n", #VAR, wms(VAR))
+    SHOW_MASK(exact_mask);
+    SHOW_MASK(target.exact_mask);
+    SHOW_M256(target_all);
+    SHOW_M256(exact);
+    SHOW_M256(once_m);
+    SHOW_M256(partial1);
+    SHOW_M256(target_twice);
+    SHOW_M256(twice_m);
+    SHOW_M256(partial2);
+    SHOW_M256(partial3);
+    SHOW_M256(partial4);
+#endif
     return match_result(exact_result, partial_result);
 }
 
@@ -315,7 +351,7 @@ bool wordle_word::match_result::parse(const string &m)
             }
         }
     } else {
-        result ='false';
+        result = false;
     }
     p |= e;
     *this = match_result(e, p);
@@ -447,6 +483,21 @@ bool wordle_word::match_target::conforms(const wordle_word &other) const
     return result;
 }
 
+
+/************************************************************************
+ * wm, wms - convenience functions for debugginh
+ ***********************************************************************/
+
+wordle_word::word_mask wm(__m256i m)
+{
+    return wordle_word::word_mask(m);
+}
+
+string wms(__m256i m)
+{
+    wordle_word::word_mask w(m);
+    return w.str();
+}
 
 
 
