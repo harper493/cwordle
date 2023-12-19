@@ -19,7 +19,7 @@ public:
     {
         KEY key;
         VALUE value;
-        bool operator<(const entry &other) const { return key < other.key; };
+        bool operator<(const entry &other) const { return value < other.value; };
         entry()
             : key(KEY()), value(VALUE()) { };
         entry(KEY k, VALUE v) : key(k), value(v) { };
