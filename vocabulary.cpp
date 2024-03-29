@@ -1,6 +1,7 @@
-#include "types.h"
+#include <vector>
+#include <string>
 
-vector<string> wordle_words{
+std::vector<std::string> wordle_words{
     "aback",
         "assay",
         "blurb",
@@ -2313,7 +2314,7 @@ vector<string> wordle_words{
         "mushy",
 };
 
-vector<string> other_words{
+std::vector<std::string> other_words{
     "aaron",
 "aback",
 "abaft",
