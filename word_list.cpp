@@ -34,6 +34,7 @@ word_list word_list::filter(const wordle_word::match_target &mt) const
             }
         }
     } else {
+        result.unfilled = false;
         for (dictionary::word_index_t i : *this) {
             const wordle_word &w = my_dict[i];
             timers::conforms_timer.restart();

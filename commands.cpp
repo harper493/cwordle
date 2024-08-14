@@ -224,15 +224,19 @@ void commands::do_remaining()
     auto sorted_list = wl.sorted();
     vector<string> words;
     string suffix;
-    if (sz > 20) {
-        sz = 20;
-        suffix = ", ...";
+    if (sz > 0) { 
+        if (sz > 20) {
+            sz = 20;
+            suffix = ", ...";
+        }
+        for (size_t i : irange(0, sz)) {
+            words.emplace_back(get_dict().get_string(wl[i]));
+        }
+        string words2 = boost::algorithm::join(words, ", ");
+        cout << styled_text(formatted("%d words remaining: %s%s", wl.size(), words2, suffix), output_color) << "\n";
+    } else {
+        cout << styled_text("No remaining words\n", output_color);
     }
-    for (size_t i : irange(0, sz)) {
-        words.emplace_back(get_dict().get_string(wl[i]));
-    }
-    string words2 = boost::algorithm::join(words, ", ");
-    cout << styled_text(formatted("%d words remaining: %s%s", wl.size(), words2, suffix), output_color) << "\n";
 }
 
 /************************************************************************
@@ -299,6 +303,9 @@ void commands::do_try()
                             styled_text::magenta) << "\n";
     } else {
         cout << ww.styled_str(mr) << "\n";
+        if (the_wordle.remaining().size()==0) {
+            cout << styled_text("No remaining words\n", styled_text::red);
+        }
     }
     if (show_timing) {
         display_time(timers::conforms_timer, "Conforms: ");
