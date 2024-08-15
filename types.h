@@ -48,6 +48,8 @@ typedef signed char S8;
 
 #define likely(X) __builtin_expect(!!(X), 1)
 #define unlikely(X) __builtin_expect(!!(X), 0)
+#define _always_inline __attribute__((always_inline))
+
 
 #define WORD_LENGTH 5
 #define ALPHABET_SIZE 26

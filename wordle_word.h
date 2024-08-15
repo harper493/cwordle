@@ -281,7 +281,6 @@ public:
     }
     styled_text styled_str(const match_result &mr) const;
     match_result match(const wordle_word &target) const;
-    match_result match_verbose(const wordle_word &target) const;
     letter_mask masked_letters(U16 mask) const;
     word_mask get_exact_mask() const { return exact_mask; };
     word_mask get_all_mask() const { return all_mask; };
@@ -295,10 +294,16 @@ public:
     static string groom(const string &w);
     static void set_verbose(bool v) { verbose = v; };
 private:
+    match_result do_match(const wordle_word &target, bool verbose) const _always_inline;
     static __mmask8 to_mask(__m256i matched)
     {
         __m256i zeros = _mm256_setzero_si256();
         return _mm256_cmpgt_epu32_mask(matched, zeros);
+    }
+    static __mmask16 to_mask(__m512i matched)
+    {
+        __m512i zeros = _mm512_setzero_si512();
+        return _mm512_cmpgt_epu32_mask(matched, zeros);
     }
     static size_t count_matches(__m256i matched)
     {
