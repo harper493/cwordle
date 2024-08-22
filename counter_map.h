@@ -2,6 +2,7 @@
 #define __COUNTER_MAP
 
 #include "types.h"
+#include "formatted.h"
 
 template<class COUNTEE, class COUNTER>
 class counter_map
@@ -13,19 +14,21 @@ public:
 private:
     counter_t counters;
 public:
+    counter_map() { };
+    counter_map(counter_map &&other) = default;
     bool empty() const { return counters.empty(); }
     size_t size() const { return counters.size(); };
     iterator begin() { return counters.begin(); };
     iterator end() { return counters.end(); };
     iterator begin() const { return counters.begin(); };
     iterator end() const { return counters.end(); };
-    void count(const COUNTEE &ch)
+    void count(const COUNTEE &ch, U32 n=1)
     {
         auto iter = counters.find(ch);
         if (iter==counters.end()) {
-            counters[ch] = 1;
+            counters[ch] = n;
         } else {
-            ++(iter->second);
+            (iter->second) += n;
         }
     }
     COUNTER get(const COUNTEE &ch) const
@@ -40,6 +43,19 @@ public:
     bool contains(const COUNTEE &ch) const
     {
         return counters.find(ch) != counters.end();
+    }
+    string str() const
+    {
+        string result;
+        for (const auto &i : counters) {
+            if (i.second) {
+                if (!result.empty())
+                    {result += ", ";
+                    }
+                result += formatted("%s: %s", i.first, i.second); 
+            }
+        }
+        return result;
     }
 };
 

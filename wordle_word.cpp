@@ -79,7 +79,7 @@ bool wordle_word::verbose = false;
  ***********************************************************************/
 
 /************************************************************************
- * or256_i32 - find the logical or of the 8 3-bit ints in an __m256i
+ * or256_i32 - find the logical or of the 8 32-bit ints in an __m256i
  ***********************************************************************/
 
 U32 or256_i32(__m256i x)
@@ -94,6 +94,21 @@ U32 or256_i32(__m256i x)
 }
 
 /************************************************************************
+ * add256_i32 - find the sum of the 8 32-bit ints in an __m256i
+ ***********************************************************************/
+
+U32 add256_i32(__m256i x)
+{
+    __m128i sum128 = _mm_add_epi32( 
+                 _mm256_castsi256_si128(x),
+                 _mm256_extracti128_si256(x, 1));
+    __m128i hi64  = _mm_unpackhi_epi64(sum128, sum128);
+    __m128i sum64 = _mm_add_epi32(hi64, sum128);
+    __m128i hi32  = _mm_shuffle_epi32(sum64, _MM_SHUFFLE(2, 3, 0, 1));    // Swap the low two elements
+    return _mm_cvtsi128_si32(_mm_add_epi32(sum64, hi32));
+}
+
+/************************************************************************
  * set_word - set up a wordle_wodr for a particular 5-letter word, setting
  * up all the fields decsribed in the header comment.
  ***********************************************************************/
@@ -104,6 +119,7 @@ void wordle_word::set_word(const string &w)
     letter_mask once;
     letter_mask twice;
     letter_mask thrice;
+    letter_mask many;
     for (size_t i : irange(0, WORD_LENGTH)) {
         char ch = w[i];
         text[i] = ch;
@@ -114,16 +130,23 @@ void wordle_word::set_word(const string &w)
         } else if (twice.contains(m)) {
             twice.remove(m);
             thrice |= m;
+        } else if (thrice.contains(m)) {
+            thrice.remove(m);
+            many |= m;
         } else {
             once |= m;
         }
     }
-    all_letters = once | twice | thrice;
+    repeated_letters = once | twice | thrice | many;
+    all_letters = once | repeated_letters;
     once_letters = once;
     twice_letters = twice;
     thrice_letters = thrice;
+    many_letters = many;
     letter_mask seen;
     letter_mask seen2;
+    letter_mask seen3;
+    all_mask = wordle_word::set_letters(all_letters); 
     for (int i : irange(0, WORD_LENGTH)) {
         char ch = text[i];
         letter_mask m(ch);
@@ -140,15 +163,22 @@ void wordle_word::set_word(const string &w)
                 }
             }
             seen2 |= m;
-        } else {
+        } else if (!seen3.contains(m)) {
+            thrice_mask[i] = m;
             for (int k : irange(0, i)) {
                 if (twice_mask[k].contains(m)) {
                     thrice_mask[k] = m;
                 }
             }
-            thrice_mask[i] = m;
+            seen3 |= m;
+        } else {
+            for (int ll : irange(0, i)) {
+                if (thrice_mask[ll].contains(m)) {
+                    many_mask[ll] = m;
+                }
+            }
+            many_mask[i] = m;
         }
-        all_mask[i] = m;
     }
 }
 
@@ -170,8 +200,8 @@ wordle_word::letter_mask wordle_word::masked_letters(U16 mask) const
 
 /************************************************************************
  * groom - a static function to convert a word to its canonical form
- * i.e. all lower case. It also checks whether tisis a valid word,
- * i.e. the correct length and no letter repeated more than three times.
+ * i.e. all lower case. It also checks whether it is a valid word,
+ * i.e. the correct length.
  *
  * Returns either the groomed word, or an empty string if the word
  * is not good.
@@ -192,12 +222,6 @@ string wordle_word::groom(const string &w)
                 result.clear();
                 break;
             }
-        }
-    }
-    for (auto i : letter_count) {
-        if (i.second >= 4) {
-            result.clear();
-            break;
         }
     }
     return result;
@@ -233,10 +257,8 @@ styled_text wordle_word::styled_str(const match_result &mr) const
 string wordle_word::letter_mask::str() const
 {
     string result;
-    for (int i : irange(0, ALPHABET_SIZE)) {
-        if (*this & letter_mask(i)) {
-            result += string(1, 'a' + i);
-        }
+    for (const auto *m : *this) {
+        result += string(1, char(*m));
     }
     return result;
 }
@@ -293,37 +315,59 @@ string wordle_word::word_mask::str() const
 #define SHOW_MASK(VAR) if (verbose) cout << formatted("%20s: %s\n", #VAR, VAR.str())
 #define SHOW_M256(VAR) if (verbose) cout << formatted("%20s: %s\n", #VAR, wms(VAR))
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"   // suppress warning about always_inline
 wordle_word::match_result wordle_word::do_match(const wordle_word &target, bool verbose) const
 {
+#pragma GCC diagnostic pop
     SHOW_MASK(exact_mask);
     SHOW_MASK(target.exact_mask);
     __m256i exact = _mm256_and_si256(exact_mask.as_m256i(), target.exact_mask.as_m256i());
     SHOW_M256(exact);
-    U32 exact_letters = or256_i32(exact);
+    cout << word_mask(exact).count_letters().str() << "\n";
+    U32 exact_letters = avx::or_i32(exact);
     __m256i target_all = _mm256_set1_epi32(target.all_letters.get() & ~exact_letters);
     __m256i once_m = _mm256_andnot_si256(exact, _mm256_load_si256(&once_mask.as_m256i()));
     SHOW_M256(target_all);
     SHOW_M256(once_m);
     __m256i partial1 = _mm256_and_si256(target_all, once_m);
     SHOW_M256(partial1);
-    __m256i target_twice = _mm256_set1_epi32(target.twice_letters.get() | target.thrice_letters.get());
+    __m256i target_twice = _mm256_set1_epi32(target.twice_letters.get()
+                                             | target.thrice_letters.get()
+                                             | target.many_letters.get());
     SHOW_M256(target_twice);
     __m256i twice_m = _mm256_andnot_si256(exact, _mm256_loadu_si256(&twice_mask.as_m256i()));
     SHOW_M256(twice_m);
     __m256i partial2 = _mm256_or_si256(partial1, _mm256_and_si256(target_twice, twice_m));
     SHOW_M256(partial2);
-    __m256i target_thrice = _mm256_set1_epi32(target.thrice_letters.get());
+    __m256i target_thrice = _mm256_set1_epi32(target.thrice_letters.get() | target.many_letters.get());
     SHOW_M256(target_thrice);
-    __m256i thrice_m = _mm256_loadu_si256(&thrice_mask.as_m256i());
+    __m256i thrice_m = _mm256_andnot_si256(exact, _mm256_loadu_si256(&thrice_mask.as_m256i()));
     SHOW_M256(thrice_m);
     __m256i partial3 = _mm256_or_si256(partial2, _mm256_and_si256(target_thrice, thrice_m));
-    __m256i partial4 = _mm256_or_si256(partial3, exact);
-    SHOW_M256(partial3);
-    SHOW_M256(partial4);
-    __m256i zeros = _mm256_setzero_si256();
-    __mmask8 exact_result = _mm256_cmpgt_epu32_mask(exact, zeros);
-    __mmask8 partial_result = _mm256_cmpgt_epu32_mask(partial4, zeros);
-    return match_result(exact_result, partial_result);
+     SHOW_M256(partial3);
+    __m256i target_many = _mm256_set1_epi32(target.many_letters.get());
+    SHOW_M256(target_many);
+    __m256i many_m = _mm256_andnot_si256(exact, _mm256_loadu_si256(&many_mask.as_m256i()));
+    SHOW_M256(many_m);
+    __m256i partial4 = _mm256_or_si256(partial3, _mm256_and_si256(target_many, many_m));
+     SHOW_M256(partial4);
+     __mmask8 partial_result = _mm256_cmpgt_epu32_mask(partial4, avx::zero(__m256i()));
+     letter_mask dups = repeated_letters & letter_mask(exact_letters, 0);
+     match_mask exact_result = word_mask(exact).to_mask();
+     for (const auto *m : dups) {
+         U32 target_count = target.exact_mask.count_letter(*m);
+         U32 my_count = exact_mask.count_letter(*m);
+         U32 exact_count = word_mask(exact).count_letter(*m);
+         U32 max_partial = std::min(target_count, my_count) - exact_count;
+         match_mask m1 = (exact_mask & target.exact_mask).match_letter(*m);
+         m1 &= ~exact_result;
+         partial_result &= ~m1.get();
+         m1 = m1.reduce_bitcount(max_partial);
+         partial_result |= m1.get();
+     }
+     partial_result |= exact_result.get();
+     return match_result(exact_result.get(), partial_result);
 }
 
 #undef SHOW_MASK
@@ -500,9 +544,54 @@ bool wordle_word::match_target::conforms(const wordle_word &other) const
     return result;
 }
 
+/************************************************************************
+ * count_letter - count the number of times that a given letter is
+ * contained in the word, provided either as a char or as a mask
+ ***********************************************************************/
+
+U32 wordle_word::word_mask::count_letter(char letter) const
+{
+    return count_letter(letter_mask(letter));
+}
+
+U32 wordle_word::word_mask::count_letter(letter_mask m) const
+{
+    __m256i all_letters = _mm256_set1_epi32(m.get());
+    __m256i matched = _mm256_and_si256(masks, all_letters);
+    return count_matches(matched);
+}
 
 /************************************************************************
- * wm, wms - convenience functions for debugginh
+ * count_letters - return a letter_map for the letters in the word
+ ***********************************************************************/
+
+wordle_word::letter_counter wordle_word::word_mask::count_letters() const
+{
+    letter_counter result;
+    letter_mask letters(or256_i32(masks), 0);
+    for (const auto m : letters) {
+        result.count(char(*m), count_letter(*m));
+    }
+    return result;
+}
+
+/************************************************************************
+ * match_letter - return a match_mask for the corresponding letter
+ ***********************************************************************/
+
+wordle_word::match_mask wordle_word::wordle_word::word_mask::match_letter(char letter) const
+{
+    return match_letter(letter_mask(letter));
+}
+
+wordle_word::match_mask wordle_word::word_mask::match_letter(letter_mask m) const
+{
+    auto m1 = avx::set1(masks, m.get());
+    return word_mask(avx::bool_and(masks, m1)).to_mask();
+}
+
+/************************************************************************
+ * wm, wms - convenience functions for debugging
  ***********************************************************************/
 
 wordle_word::word_mask wm(__m256i m)

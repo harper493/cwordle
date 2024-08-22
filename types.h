@@ -50,8 +50,13 @@ typedef signed char S8;
 #define unlikely(X) __builtin_expect(!!(X), 0)
 #define _always_inline __attribute__((always_inline))
 
-
 #define WORD_LENGTH 5
 #define ALPHABET_SIZE 26
+
+template<typename T>
+concept IntegralType = requires(T param)
+{
+    requires std::is_integral_v<T>;
+};
 
 #endif
