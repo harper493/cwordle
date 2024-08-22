@@ -136,6 +136,7 @@ namespace avx
     {
         return _mm512_mask_blend_epi32(mask, x, y);
     }
+#if 0
     inline U32 or_i32(__m512i x)
     {
         __m256i x0 = _mm512_castsi512_si256(_mm512_shuffle_epi32(x, _MM_SHUFFLE(1, 2, 3, 4)));
@@ -149,7 +150,7 @@ namespace avx
         __m256i sum256 = _mm256_add_epi32(x0, x1);
         return add_i32(sum256);
     }
-
+#endif
 };
 
 #endif

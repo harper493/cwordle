@@ -277,6 +277,7 @@ public:
         }
         const __m256i &as_m256i() const { return masks; };
         __m256i &as_m256i() { return masks; };
+        __m256i get() const { return masks; };
         iterator begin() { return as_letters().begin(); }
         iterator end() { return as_letters().end(); }
         // const iterator begin() const { return as_letters().begin(); }

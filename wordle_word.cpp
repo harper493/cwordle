@@ -324,7 +324,6 @@ wordle_word::match_result wordle_word::do_match(const wordle_word &target, bool 
     SHOW_MASK(target.exact_mask);
     __m256i exact = _mm256_and_si256(exact_mask.as_m256i(), target.exact_mask.as_m256i());
     SHOW_M256(exact);
-    cout << word_mask(exact).count_letters().str() << "\n";
     U32 exact_letters = avx::or_i32(exact);
     __m256i target_all = _mm256_set1_epi32(target.all_letters.get() & ~exact_letters);
     __m256i once_m = _mm256_andnot_si256(exact, _mm256_load_si256(&once_mask.as_m256i()));
@@ -340,40 +339,36 @@ wordle_word::match_result wordle_word::do_match(const wordle_word &target, bool 
     SHOW_M256(twice_m);
     __m256i partial2 = _mm256_or_si256(partial1, _mm256_and_si256(target_twice, twice_m));
     SHOW_M256(partial2);
-    __m256i target_thrice = _mm256_set1_epi32(target.thrice_letters.get() | target.many_letters.get());
-    SHOW_M256(target_thrice);
-    __m256i thrice_m = _mm256_andnot_si256(exact, _mm256_loadu_si256(&thrice_mask.as_m256i()));
-    SHOW_M256(thrice_m);
-    __m256i partial3 = _mm256_or_si256(partial2, _mm256_and_si256(target_thrice, thrice_m));
-     SHOW_M256(partial3);
-    __m256i target_many = _mm256_set1_epi32(target.many_letters.get());
-    SHOW_M256(target_many);
-    __m256i many_m = _mm256_andnot_si256(exact, _mm256_loadu_si256(&many_mask.as_m256i()));
-    SHOW_M256(many_m);
-    __m256i partial4 = _mm256_or_si256(partial3, _mm256_and_si256(target_many, many_m));
-     SHOW_M256(partial4);
-     __mmask8 partial_result = _mm256_cmpgt_epu32_mask(partial4, avx::zero(__m256i()));
-     letter_mask dups = repeated_letters & letter_mask(exact_letters, 0);
-     match_mask exact_result = word_mask(exact).to_mask();
-     for (const auto *m : dups) {
-         U32 target_count = target.exact_mask.count_letter(*m);
-         U32 my_count = exact_mask.count_letter(*m);
-         U32 exact_count = word_mask(exact).count_letter(*m);
-         U32 max_partial = std::min(target_count, my_count) - exact_count;
-         match_mask m1 = (exact_mask & target.exact_mask).match_letter(*m);
-         m1 &= ~exact_result;
-         partial_result &= ~m1.get();
-         m1 = m1.reduce_bitcount(max_partial);
-         partial_result |= m1.get();
-     }
-     partial_result |= exact_result.get();
-     return match_result(exact_result.get(), partial_result);
+    letter_mask many = thrice_letters | many_letters;
+    __mmask8 partial_result = _mm256_cmpgt_epu32_mask(partial2, avx::zero(__m256i()));
+    for (const auto *m : many) {
+        if (word_mask(exact).count_letter(*m)==0) {
+            word_mask wm = wordle_word::set_letters(*m);
+            U32 count = exact_mask.count_letter(*m);
+            word_mask possible_partials = wm & exact_mask;
+            word_mask target_many_mask = wordle_word::set_letters(target.thrice_letters | target.many_letters);
+            word_mask p = possible_partials & target_many_mask;
+            match_mask m2 = p.to_mask();
+            match_mask m3 = m2.reduce_bitcount(count);
+            partial_result = partial_result | m2.get();
+        }
+    }
+    letter_mask dups = repeated_letters & letter_mask(exact_letters, 0);
+    match_mask exact_result = word_mask(exact).to_mask();
+    for (const auto *m : dups) {
+        U32 target_count = target.exact_mask.count_letter(*m);
+        U32 my_count = exact_mask.count_letter(*m);
+        U32 exact_count = word_mask(exact).count_letter(*m);
+        U32 max_partial = std::min(target_count, my_count) - exact_count;
+        match_mask m1 = exact_mask.match_letter(*m);
+        m1 &= ~exact_result;
+        partial_result &= ~m1.get();
+        m1 = m1.reduce_bitcount(max_partial);
+        partial_result |= m1.get();
+    }
+    partial_result |= exact_result.get();
+    return match_result(exact_result.get(), partial_result);
 }
-
-#undef SHOW_MASK
-#undef SHOW_M256
-#define SHOW_MASK(VAR)
-#define SHOW_M256(VAR)
 
 wordle_word::match_result wordle_word::match(const wordle_word &target) const
 {
