@@ -44,8 +44,8 @@
  * twice_mask: as above, but only for letters which appear
  * exactly twice
  *
- * thrice_mask: as above, but only for letters which appear
- * exactly three times (rare but it happens)
+ * many_mask: as above, but only for letters which appear
+ * three or more times
  *
  * all_letters: a letter mask with a bit set of every letter that
  * appears in the word
@@ -56,8 +56,8 @@
  * twice_letters: a letter mask with a bit set for every letter that
  * appears exactly twice
  *
- * thrice_letters: a letter mask with a bit set for every letter that
- * appears exactly three times
+ * many_letters: a letter mask with a bit set for every letter that
+ * appears three or more times
  *
  * Holding this information greatly speeds up the 'match' and 'conforms'
  * functions.
@@ -118,7 +118,6 @@ void wordle_word::set_word(const string &w)
     memset(this, 0, sizeof(wordle_word));
     letter_mask once;
     letter_mask twice;
-    letter_mask thrice;
     letter_mask many;
     for (size_t i : irange(0, WORD_LENGTH)) {
         char ch = w[i];
@@ -129,23 +128,18 @@ void wordle_word::set_word(const string &w)
             twice |= m;
         } else if (twice.contains(m)) {
             twice.remove(m);
-            thrice |= m;
-        } else if (thrice.contains(m)) {
-            thrice.remove(m);
             many |= m;
         } else {
             once |= m;
         }
     }
-    repeated_letters = once | twice | thrice | many;
+    repeated_letters = once | twice | many;
     all_letters = once | repeated_letters;
     once_letters = once;
     twice_letters = twice;
-    thrice_letters = thrice;
     many_letters = many;
     letter_mask seen;
     letter_mask seen2;
-    letter_mask seen3;
     all_mask = wordle_word::set_letters(all_letters); 
     for (int i : irange(0, WORD_LENGTH)) {
         char ch = text[i];
@@ -163,17 +157,9 @@ void wordle_word::set_word(const string &w)
                 }
             }
             seen2 |= m;
-        } else if (!seen3.contains(m)) {
-            thrice_mask[i] = m;
-            for (int k : irange(0, i)) {
-                if (twice_mask[k].contains(m)) {
-                    thrice_mask[k] = m;
-                }
-            }
-            seen3 |= m;
         } else {
             for (int ll : irange(0, i)) {
-                if (thrice_mask[ll].contains(m)) {
+                if (twice_mask[ll].contains(m)) {
                     many_mask[ll] = m;
                 }
             }
@@ -332,21 +318,19 @@ wordle_word::match_result wordle_word::do_match(const wordle_word &target, bool 
     __m256i partial1 = _mm256_and_si256(target_all, once_m);
     SHOW_M256(partial1);
     __m256i target_twice = _mm256_set1_epi32(target.twice_letters.get()
-                                             | target.thrice_letters.get()
                                              | target.many_letters.get());
     SHOW_M256(target_twice);
     __m256i twice_m = _mm256_andnot_si256(exact, _mm256_loadu_si256(&twice_mask.as_m256i()));
     SHOW_M256(twice_m);
     __m256i partial2 = _mm256_or_si256(partial1, _mm256_and_si256(target_twice, twice_m));
     SHOW_M256(partial2);
-    letter_mask many = thrice_letters | many_letters;
     __mmask8 partial_result = _mm256_cmpgt_epu32_mask(partial2, avx::zero(__m256i()));
-    for (const auto *m : many) {
+    for (const auto *m : many_letters) {
         if (word_mask(exact).count_letter(*m)==0) {
             word_mask wm = wordle_word::set_letters(*m);
             U32 count = exact_mask.count_letter(*m);
             word_mask possible_partials = wm & exact_mask;
-            word_mask target_many_mask = wordle_word::set_letters(target.thrice_letters | target.many_letters);
+            word_mask target_many_mask = wordle_word::set_letters(target.many_letters);
             word_mask p = possible_partials & target_many_mask;
             match_mask m2 = p.to_mask();
             match_mask m3 = m2.reduce_bitcount(count);
