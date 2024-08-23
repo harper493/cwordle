@@ -187,7 +187,7 @@ void wordle_word::set_word(const string &w)
  * the letter positions identified by the mask.
  ***********************************************************************/
 
-wordle_word::letter_mask wordle_word::masked_letters(U16 mask) const
+letter_mask wordle_word::masked_letters(U16 mask) const
 {
     letter_mask result;
     for (auto i : irange(0, WORD_LENGTH)) {
@@ -254,7 +254,7 @@ styled_text wordle_word::styled_str(const match_result &mr) const
  * letter mask.
  ***********************************************************************/
 
-string wordle_word::letter_mask::str() const
+string letter_mask::str() const
 {
     string result;
     for (const auto *m : *this) {
@@ -269,7 +269,7 @@ string wordle_word::letter_mask::str() const
  * debugging.
  ***********************************************************************/
 
-string wordle_word::word_mask::str() const
+string word_mask::str() const
 {
     string result;
     for (size_t i : irange(0, WORD_LENGTH)) {
@@ -544,23 +544,22 @@ bool wordle_word::match_target::conforms(const wordle_word &other) const
  * contained in the word, provided either as a char or as a mask
  ***********************************************************************/
 
-U32 wordle_word::word_mask::count_letter(char letter) const
+U32 word_mask::count_letter(char letter) const
 {
     return count_letter(letter_mask(letter));
 }
 
-U32 wordle_word::word_mask::count_letter(letter_mask m) const
+U32 word_mask::count_letter(letter_mask m) const
 {
-    __m256i all_letters = _mm256_set1_epi32(m.get());
-    __m256i matched = _mm256_and_si256(masks, all_letters);
-    return count_matches(matched);
+    word_mask matched = avx::bool_and(masks, set_letters(m).get());
+    return matched.to_mask().size();
 }
 
 /************************************************************************
  * count_letters - return a letter_map for the letters in the word
  ***********************************************************************/
 
-wordle_word::letter_counter wordle_word::word_mask::count_letters() const
+letter_counter word_mask::count_letters() const
 {
     letter_counter result;
     letter_mask letters(or256_i32(masks), 0);
@@ -574,12 +573,12 @@ wordle_word::letter_counter wordle_word::word_mask::count_letters() const
  * match_letter - return a match_mask for the corresponding letter
  ***********************************************************************/
 
-wordle_word::match_mask wordle_word::wordle_word::word_mask::match_letter(char letter) const
+match_mask word_mask::match_letter(char letter) const
 {
     return match_letter(letter_mask(letter));
 }
 
-wordle_word::match_mask wordle_word::word_mask::match_letter(letter_mask m) const
+match_mask word_mask::match_letter(letter_mask m) const
 {
     auto m1 = avx::set1(masks, m.get());
     return word_mask(avx::bool_and(masks, m1)).to_mask();
@@ -589,14 +588,14 @@ wordle_word::match_mask wordle_word::word_mask::match_letter(letter_mask m) cons
  * wm, wms - convenience functions for debugging
  ***********************************************************************/
 
-wordle_word::word_mask wm(__m256i m)
+word_mask wm(__m256i m)
 {
-    return wordle_word::word_mask(m);
+    return word_mask(m);
 }
 
 string wms(__m256i m)
 {
-    wordle_word::word_mask w(m);
+    word_mask w(m);
     return w.str();
 }
 

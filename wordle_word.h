@@ -7,6 +7,351 @@
 #include "avx.h"
 #include <immintrin.h>
 
+typedef counter_map<char, U16> letter_counter;
+
+/************************************************************************
+ * match_mask - wrapper around _mmask8,providing all the obvious
+ * logical operators
+ ***********************************************************************/
+
+class match_mask
+{
+private:
+    __mmask8 my_mask;
+public:
+    match_mask()
+        : my_mask(0)
+    {
+    }
+    match_mask(const __mmask8 &m)
+        : my_mask(m)
+    {
+    }
+    explicit match_mask(const IntegralType auto &v)
+        : my_mask(v)
+    {
+    }
+    match_mask &operator=(const match_mask &other)
+    {
+        my_mask = other.my_mask;
+        return *this;
+    }
+    match_mask &operator=(const IntegralType auto &v)
+    {
+        my_mask = v;
+        return *this;
+    }
+    U16 get() const
+    {
+        return my_mask;
+    }
+    bool operator==(const match_mask &other)
+    {
+        return my_mask == other.my_mask;
+    }
+    bool operator!=(const match_mask &other)
+    {
+        return my_mask != other.my_mask;
+    }
+    explicit operator bool() const
+    {
+        return my_mask != 0;
+    }
+    match_mask operator~() const
+    {
+        return match_mask(~my_mask);
+    }
+    match_mask operator&(const match_mask &other) const
+    {
+        return match_mask(my_mask & other.my_mask);
+    }
+    match_mask operator|(const match_mask &other) const
+    {
+        return match_mask(my_mask | other.my_mask);
+    }
+    match_mask &operator&=(const match_mask &other)
+    {
+        my_mask &= other.my_mask;
+        return *this;
+    }
+    match_mask &operator|=(const match_mask &other)
+    {
+        my_mask |= other.my_mask;
+        return *this;
+    }
+    U32 size() const
+    {
+        return __builtin_popcount(my_mask);
+    }
+    /************************************************************************
+     * reduce_bitcount - reduce the number of set bits to 'target_size',
+     * starting with the highest order bits
+     ***********************************************************************/
+    match_mask reduce_bitcount(U32 target_size)
+    {
+        match_mask result(*this);
+        while (result.size() > target_size) {
+            U32 lz = __builtin_clz(result.my_mask);
+            U32 m = 1 << (31 - lz);
+            result.my_mask &= ~m;
+        }
+        return result;
+    }
+};
+
+/************************************************************************
+ * letter_mask - a U32 with one bit for each letter.
+ ***********************************************************************/
+
+class letter_mask
+{
+private:
+    U32 mask = 0;
+public:
+    letter_mask() { };
+    explicit letter_mask(char ch) : mask(1 << (ch - 'a')) { };
+    explicit letter_mask(U32 i) : mask(1 << i) { };
+    letter_mask(U32 m, int) : mask(m) { };
+    explicit operator bool() const
+    {
+        return mask != 0;
+    }
+    explicit operator char() const
+    {
+        if (mask) {
+            return 'a' - 1 + __builtin_ffs(mask);
+        } else {
+            return ' ';
+        }
+    }
+    string str() const;
+    bool empty() const
+    {
+        return mask == 0;
+    }
+    bool operator==(const letter_mask &other) const
+    {
+        return mask == other.mask;
+    }
+    bool operator!=(const letter_mask &other) const
+    {
+        return mask == other.mask;
+    }
+    letter_mask operator|(const letter_mask &other) const
+    {
+        letter_mask result = *this;
+        result |= other;
+        return result;
+    }
+    letter_mask operator&(const letter_mask &other) const
+    {
+        letter_mask result = *this;
+        result &= other;
+        return result;
+    }
+    letter_mask &operator&=(const letter_mask &other)
+    {
+        mask &= other.mask;
+        return *this;
+    }
+    letter_mask &operator&=(char ch)
+    {
+        mask &= letter_mask(ch).mask;
+        return *this;
+    }
+    letter_mask &operator|=(const letter_mask &other)
+    {
+        mask |= other.mask;
+        return *this;
+    }
+    letter_mask &operator|=(char ch)
+    {
+        mask |= letter_mask(ch).mask;
+        return *this;
+    }
+    letter_mask &remove(const letter_mask &other)
+    {
+        mask &= ~other.mask;
+        return *this;
+    }
+    letter_mask &remove(char ch)
+    {
+        mask &= ~letter_mask(ch).mask;
+        return *this;
+    }
+    letter_mask operator~() const
+    {
+        return letter_mask(all().mask & ~mask, 0);
+    }
+    bool contains(const letter_mask &other) const
+    {
+        return bool((*this) & other);
+    }
+    bool contains(char ch) const
+    {
+        return bool((*this) & letter_mask(ch));
+    }
+    U32 size() const
+    {
+        return __builtin_popcount(mask);
+    }
+    U32 get() const
+    {
+        return mask;
+    }
+    static letter_mask all()
+    {
+        return letter_mask((1 << (ALPHABET_SIZE+1)) - 1, 0);
+    }
+    /************************************************************************
+     * iterator - return each letter covered by the mask (as a one-bit
+     * mask) in turn
+     ***********************************************************************/
+    class const_iterator
+    {
+    public:
+        typedef std::forward_iterator_tag iterator_category;
+        typedef letter_mask value_type;
+        typedef letter_mask* pointer;
+        typedef letter_mask& reference;
+    private:
+        U32 remaining = 0;
+        U32 current = 0;
+    public:
+        const_iterator() { };
+        const_iterator(const letter_mask& m)
+            : remaining(m.get())
+        {
+            next();
+        }
+        const_iterator(const const_iterator &other)
+            : remaining(other.remaining), current(other.current)
+        { };
+        bool operator==(const const_iterator &other)
+        {
+            return remaining==other.remaining && current==other.current;
+        }
+        bool operator!=(const const_iterator &other)
+        {
+            return !(*this==other);
+        }
+        const letter_mask &operator&() const
+        {
+            return reinterpret_cast<const letter_mask&>(current);
+        }
+        const letter_mask *operator*() const
+        {
+            return reinterpret_cast<const letter_mask*>(&current);
+        }
+        const_iterator &operator++()
+        {
+            next();
+            return *this;
+        }
+    private:
+        void next()
+        {
+            if (remaining == 0) {
+                current = 0;
+            } else {
+                U32 next_rem = remaining & (remaining - 1);
+                current = remaining & ~next_rem;
+                remaining =next_rem;
+            }
+        }
+    };
+    const_iterator begin() const
+    {
+        return const_iterator(*this);
+    }
+    const_iterator end() const
+    {
+        return const_iterator();
+    }
+};
+
+/************************************************************************
+ * word_mask - a 256 or 512 bit value with a letter mask for each position
+ * in the word
+ ***********************************************************************/
+
+class word_mask
+{
+public:
+    typedef array<letter_mask, WORD_LENGTH> just_letters_t;
+    typedef just_letters_t::iterator iterator;
+    typedef just_letters_t::const_iterator const_iterator;
+private:
+    __m256i masks;
+public:
+    word_mask() : masks(_mm256_setzero_si256()) { };
+    word_mask(__m256i m) : masks(m) { };
+    word_mask &operator=(const word_mask &other)
+    {
+        masks = other.masks;
+        return *this;
+    }
+    const __m256i &as_m256i() const { return masks; };
+    __m256i &as_m256i() { return masks; };
+    __m256i get() const { return masks; };
+    iterator begin() { return as_letters().begin(); }
+    iterator end() { return as_letters().end(); }
+    letter_mask &operator[](size_t idx)
+    {
+        return as_letters()[idx];
+    }
+    const letter_mask &operator[](size_t idx) const
+    {
+        return as_letters()[idx];
+    }
+    word_mask operator&(const word_mask &other) const
+    {
+        return word_mask(avx::bool_and(masks, other.masks));
+    }
+    word_mask operator|(const word_mask &other) const
+    {
+        return word_mask(avx::bool_or(masks, other.masks));
+    }
+    word_mask &operator&=(const word_mask &other)
+    {
+        masks = avx::bool_and(masks, other.masks);
+        return *this;
+    }
+    word_mask &operator|=(const word_mask &other)
+    {
+        masks = avx::bool_or(masks, other.masks);
+        return *this;
+    }
+    U32 count_letter(char letter) const;
+    U32 count_letter(letter_mask m) const;
+    match_mask match_letter(char letter) const;
+    match_mask match_letter(letter_mask m) const;
+    match_mask to_mask() 
+    {
+        __m256i zeros = _mm256_setzero_si256();
+        return _mm256_cmpgt_epu32_mask(masks, zeros);
+    }
+    letter_counter count_letters() const;
+    string str() const;
+    static word_mask set_letters(letter_mask m)
+    {
+        return word_mask(avx::set1(__m256i(), m.get()));
+    }
+    static word_mask set_letters(letter_mask m, match_mask mask)
+    {
+        return word_mask(avx::set1_masked(__m256i(), m.get(), mask.get()));
+    }
+private:
+    just_letters_t &as_letters()
+    {
+        return reinterpret_cast<just_letters_t&>(masks);
+    }
+    const just_letters_t &as_letters() const
+    {
+        return reinterpret_cast<const just_letters_t&>(masks);
+    }        
+};
+
 /************************************************************************
  * wordle_word class - repersentation of a single 5-letter word in 
  * a way that makes algorthm execution efficient
@@ -16,313 +361,6 @@ class wordle_word
 {
 public:
     typedef array<char, WORD_LENGTH> text_t;
-    typedef counter_map<char, U16> letter_counter;
-    class match_mask
-    {
-    private:
-        __mmask8 my_mask;
-    public:
-        match_mask()
-            : my_mask(0)
-        {
-        }
-        match_mask(const __mmask8 &m)
-            : my_mask(m)
-        {
-        }
-        explicit match_mask(const IntegralType auto &v)
-            : my_mask(v)
-        {
-        }
-        match_mask &operator=(const match_mask &other)
-        {
-            my_mask = other.my_mask;
-            return *this;
-        }
-        match_mask &operator=(const IntegralType auto &v)
-        {
-            my_mask = v;
-            return *this;
-        }
-        U16 get() const
-        {
-            return my_mask;
-        }
-        bool operator==(const match_mask &other)
-        {
-            return my_mask == other.my_mask;
-        }
-        bool operator!=(const match_mask &other)
-        {
-            return my_mask != other.my_mask;
-        }
-        explicit operator bool() const
-        {
-            return my_mask != 0;
-        }
-        match_mask operator~() const
-        {
-            return match_mask(~my_mask);
-        }
-        match_mask operator&(const match_mask &other) const
-        {
-            return match_mask(my_mask & other.my_mask);
-        }
-        match_mask operator|(const match_mask &other) const
-        {
-            return match_mask(my_mask | other.my_mask);
-        }
-        match_mask &operator&=(const match_mask &other)
-        {
-            my_mask &= other.my_mask;
-            return *this;
-        }
-        match_mask &operator|=(const match_mask &other)
-        {
-            my_mask |= other.my_mask;
-            return *this;
-        }
-        U32 size() const
-        {
-            return __builtin_popcount(my_mask);
-        }
-        match_mask reduce_bitcount(U32 target_size)
-        {
-            match_mask result(*this);
-            while (result.size() > target_size) {
-                U32 lz = __builtin_clz(result.my_mask);
-                U32 m = 1 << (31 - lz);
-                result.my_mask &= ~m;
-            }
-            return result;
-        }
-    };
-    class letter_mask
-    {
-    private:
-        U32 mask = 0;
-    public:
-        letter_mask() { };
-        explicit letter_mask(char ch) : mask(1 << (ch - 'a')) { };
-        explicit letter_mask(U32 i) : mask(1 << i) { };
-        letter_mask(U32 m, int) : mask(m) { };
-        explicit operator bool() const
-        {
-            return mask != 0;
-        }
-        explicit operator char() const
-        {
-            if (mask) {
-                return 'a' - 1 + __builtin_ffs(mask);
-            } else {
-                return ' ';
-            }
-        }
-        string str() const;
-        bool empty() const
-        {
-            return mask == 0;
-        }
-        bool operator==(const letter_mask &other) const
-        {
-            return mask == other.mask;
-        }
-        bool operator!=(const letter_mask &other) const
-        {
-            return mask == other.mask;
-        }
-         letter_mask &operator|=(const letter_mask &other)
-        {
-            mask |= other.mask;
-            return *this;
-        }
-        letter_mask &operator|=(char ch)
-        {
-            mask |= letter_mask(ch).mask;
-            return *this;
-        }
-        letter_mask operator|(const letter_mask &other) const
-        {
-            letter_mask result = *this;
-            result |= other;
-            return result;
-        }
-        letter_mask operator&(const letter_mask &other) const
-        {
-            letter_mask result = *this;
-            result &= other;
-            return result;
-        }
-        letter_mask &operator&=(const letter_mask &other)
-        {
-            mask &= other.mask;
-            return *this;
-        }
-        letter_mask &operator&=(char ch)
-        {
-            mask &= letter_mask(ch).mask;
-            return *this;
-        }
-        letter_mask &remove(const letter_mask &other)
-        {
-            mask &= ~other.mask;
-            return *this;
-        }
-        letter_mask &remove(char ch)
-        {
-            mask &= ~letter_mask(ch).mask;
-            return *this;
-        }
-        letter_mask operator~() const
-        {
-            return letter_mask(all().mask & ~mask, 0);
-        }
-        bool contains(const letter_mask &other) const
-        {
-            return bool((*this) & other);
-        }
-        bool contains(char ch) const
-        {
-            return bool((*this) & letter_mask(ch));
-        }
-        U32 size() const
-        {
-            return __builtin_popcount(mask);
-        }
-        U32 get() const
-        {
-            return mask;
-        }
-        static letter_mask all()
-        {
-            return letter_mask((1 << (ALPHABET_SIZE+1)) - 1, 0);
-        }
-        class const_iterator
-        {
-        public:
-            typedef std::forward_iterator_tag iterator_category;
-            typedef letter_mask value_type;
-            typedef letter_mask* pointer;
-            typedef letter_mask& reference;
-        private:
-            U32 remaining = 0;
-            U32 current = 0;
-        public:
-            const_iterator() { };
-            const_iterator(const letter_mask& m)
-                : remaining(m.get())
-            {
-                next();
-            }
-            const_iterator(const const_iterator &other)
-                : remaining(other.remaining), current(other.current)
-            { };
-            bool operator==(const const_iterator &other)
-            {
-                return remaining==other.remaining && current==other.current;
-            }
-            bool operator!=(const const_iterator &other)
-            {
-                return !(*this==other);
-            }
-            const letter_mask &operator&() const
-            {
-                return reinterpret_cast<const letter_mask&>(current);
-            }
-            const letter_mask *operator*() const
-            {
-                return reinterpret_cast<const letter_mask*>(&current);
-            }
-            const_iterator &operator++()
-            {
-                next();
-                return *this;
-            }
-        private:
-            void next()
-            {
-                if (remaining == 0) {
-                    current = 0;
-                } else {
-                    U32 next_rem = remaining & (remaining - 1);
-                    current = remaining & ~next_rem;
-                    remaining =next_rem;
-                }
-            }
-        };
-        const_iterator begin() const
-        {
-            return const_iterator(*this);
-        }
-        const_iterator end() const
-        {
-            return const_iterator();
-        }
-    };
-    class word_mask
-    {
-    public:
-        typedef array<letter_mask, WORD_LENGTH> just_letters_t;
-        typedef just_letters_t::iterator iterator;
-        typedef just_letters_t::const_iterator const_iterator;
-    private:
-        __m256i masks;
-    public:
-        word_mask() : masks(_mm256_setzero_si256()) { };
-        word_mask(__m256i m) : masks(m) { };
-        word_mask &operator=(const word_mask &other)
-        {
-            masks = other.masks;
-            return *this;
-        }
-        const __m256i &as_m256i() const { return masks; };
-        __m256i &as_m256i() { return masks; };
-        __m256i get() const { return masks; };
-        iterator begin() { return as_letters().begin(); }
-        iterator end() { return as_letters().end(); }
-        // const iterator begin() const { return as_letters().begin(); }
-        // const iterator end() const { return as_letters().end(); }
-        letter_mask &operator[](size_t idx)
-        {
-            return as_letters()[idx];
-        }
-        const letter_mask &operator[](size_t idx) const
-        {
-            return as_letters()[idx];
-        }
-        word_mask operator&(const word_mask &other) const
-        {
-            return word_mask(avx::bool_and(masks, other.masks));
-        }
-        word_mask operator|(const word_mask &other) const
-        {
-            return word_mask(avx::bool_or(masks, other.masks));
-        }
-        U32 count_letter(char letter) const;
-        U32 count_letter(letter_mask m) const;
-        match_mask match_letter(char letter) const;
-        match_mask match_letter(letter_mask m) const;
-        match_mask to_mask() 
-        {
-            __m256i zeros = _mm256_setzero_si256();
-            return _mm256_cmpgt_epu32_mask(masks, zeros);
-        }
-        letter_counter count_letters() const;
-        string str() const;
-        static word_mask set_letters(letter_mask m, match_mask mask)
-        {
-            return word_mask(avx::set1_masked(__m256i(), m.get(), mask.get()));
-        }
-    private:
-        just_letters_t &as_letters()
-        {
-            return reinterpret_cast<just_letters_t&>(masks);
-        }
-        const just_letters_t &as_letters() const
-        {
-            return reinterpret_cast<const just_letters_t&>(masks);
-        }        
-    };
     class match_result
     {
     private:
@@ -492,7 +530,7 @@ private:
 friend class match_target;
 };
 
-wordle_word::word_mask wm(__m256i m);
+word_mask wm(__m256i m);
 string wms(__m256i m);
 
 #endif
