@@ -173,11 +173,11 @@ void wordle_word::set_word(const string &w)
  * the letter positions identified by the mask.
  ***********************************************************************/
 
-letter_mask wordle_word::masked_letters(U16 mask) const
+letter_mask wordle_word::masked_letters(match_mask mask) const
 {
     letter_mask result;
     for (auto i : irange(0, WORD_LENGTH)) {
-        if (mask & (1 << i)) {
+        if (mask.get() & (1 << i)) {
             result |= exact_mask[i];
         }
     }
@@ -308,23 +308,22 @@ wordle_word::match_result wordle_word::do_match(const wordle_word &target, bool 
 #pragma GCC diagnostic pop
     SHOW_MASK(exact_mask);
     SHOW_MASK(target.exact_mask);
-    __m256i exact = _mm256_and_si256(exact_mask.as_m256i(), target.exact_mask.as_m256i());
-    SHOW_M256(exact);
-    U32 exact_letters = avx::or_i32(exact);
-    __m256i target_all = _mm256_set1_epi32(target.all_letters.get() & ~exact_letters);
-    __m256i once_m = _mm256_andnot_si256(exact, _mm256_load_si256(&once_mask.as_m256i()));
-    SHOW_M256(target_all);
-    SHOW_M256(once_m);
-    __m256i partial1 = _mm256_and_si256(target_all, once_m);
-    SHOW_M256(partial1);
-    __m256i target_twice = _mm256_set1_epi32(target.twice_letters.get()
-                                             | target.many_letters.get());
-    SHOW_M256(target_twice);
-    __m256i twice_m = _mm256_andnot_si256(exact, _mm256_loadu_si256(&twice_mask.as_m256i()));
-    SHOW_M256(twice_m);
-    __m256i partial2 = _mm256_or_si256(partial1, _mm256_and_si256(target_twice, twice_m));
-    SHOW_M256(partial2);
-    __mmask8 partial_result = _mm256_cmpgt_epu32_mask(partial2, avx::zero(__m256i()));
+    word_mask exact = exact_mask & target.exact_mask;
+    SHOW_MASK(exact);
+    letter_mask exact_letters = exact.all_letters();
+    word_mask target_all = wordle_word::set_letters(target.all_letters & ~exact_letters);
+    word_mask once_m = exact.and_not(once_mask);
+    SHOW_MASK(target_all);
+    SHOW_MASK(once_m);
+    word_mask partial1 = target_all & once_m;
+    SHOW_MASK(partial1);
+    word_mask target_twice = wordle_word::set_letters(target.twice_letters | target.many_letters);
+    SHOW_MASK(target_twice);
+    word_mask twice_m = exact.and_not(twice_mask);
+    SHOW_MASK(twice_m);
+    word_mask partial2 = partial1 | (target_twice & twice_m);
+    SHOW_MASK(partial2);
+    match_mask partial_result = partial2.to_mask();
     for (const auto *m : many_letters) {
         if (word_mask(exact).count_letter(*m)==0) {
             word_mask wm = wordle_word::set_letters(*m);
@@ -334,10 +333,10 @@ wordle_word::match_result wordle_word::do_match(const wordle_word &target, bool 
             word_mask p = possible_partials & target_many_mask;
             match_mask m2 = p.to_mask();
             match_mask m3 = m2.reduce_bitcount(count);
-            partial_result = partial_result | m2.get();
+            partial_result |= m2;
         }
     }
-    letter_mask dups = repeated_letters & letter_mask(exact_letters, 0);
+    letter_mask dups = repeated_letters & exact_letters;
     match_mask exact_result = word_mask(exact).to_mask();
     for (const auto *m : dups) {
         U32 target_count = target.exact_mask.count_letter(*m);
@@ -346,12 +345,12 @@ wordle_word::match_result wordle_word::do_match(const wordle_word &target, bool 
         U32 max_partial = std::min(target_count, my_count) - exact_count;
         match_mask m1 = exact_mask.match_letter(*m);
         m1 &= ~exact_result;
-        partial_result &= ~m1.get();
+        partial_result &= ~m1;
         m1 = m1.reduce_bitcount(max_partial);
-        partial_result |= m1.get();
+        partial_result |= m1;
     }
-    partial_result |= exact_result.get();
-    return match_result(exact_result.get(), partial_result);
+    partial_result |= exact_result;
+    return match_result(exact_result, partial_result);
 }
 
 wordle_word::match_result wordle_word::match(const wordle_word &target) const
@@ -414,7 +413,7 @@ wordle_word::match_target::match_target(const wordle_word &target, const match_r
     if (target.str() == "beers") {
         int i = 0;
     }
-    U16 only_partial = my_mr.partial_match & ~my_mr.exact_match;
+    match_mask only_partial = my_mr.partial_match & ~my_mr.exact_match;
     partial_letters = my_word.masked_letters(only_partial);
     exact_letters = my_word.masked_letters(my_mr.exact_match);
     auto x1 = partial_letters | exact_letters;
@@ -546,7 +545,7 @@ U32 word_mask::count_letter(letter_mask m) const
 letter_counter word_mask::count_letters() const
 {
     letter_counter result;
-    letter_mask letters(or256_i32(masks), 0);
+    letter_mask letters(or256_i32(masks));
     for (const auto m : letters) {
         result.count(char(*m), count_letter(*m));
     }

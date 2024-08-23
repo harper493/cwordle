@@ -44,7 +44,7 @@ namespace avx
     {
         return _mm256_or_si256(p, q);
     }
-    inline __m256i andnot(__m256i p, __m256i q)
+    inline __m256i and_not(__m256i p, __m256i q)
     {
         return _mm256_andnot_si256(p, q);
     }
@@ -114,7 +114,7 @@ namespace avx
     {
         return _mm512_or_si512(p, q);
     }
-    inline __m512i andnot(__m512i p, __m512i q)
+    inline __m512i and_not(__m512i p, __m512i q)
     {
         return _mm512_andnot_si512(p, q);
     }

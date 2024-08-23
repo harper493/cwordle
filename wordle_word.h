@@ -45,11 +45,11 @@ public:
     {
         return my_mask;
     }
-    bool operator==(const match_mask &other)
+    bool operator==(const match_mask &other) const
     {
         return my_mask == other.my_mask;
     }
-    bool operator!=(const match_mask &other)
+    bool operator!=(const match_mask &other) const
     {
         return my_mask != other.my_mask;
     }
@@ -110,8 +110,7 @@ private:
 public:
     letter_mask() { };
     explicit letter_mask(char ch) : mask(1 << (ch - 'a')) { };
-    explicit letter_mask(U32 i) : mask(1 << i) { };
-    letter_mask(U32 m, int) : mask(m) { };
+    letter_mask(U32 m) : mask(m) { };
     explicit operator bool() const
     {
         return mask != 0;
@@ -181,7 +180,7 @@ public:
     }
     letter_mask operator~() const
     {
-        return letter_mask(all().mask & ~mask, 0);
+        return letter_mask(U32(all().mask & ~mask));
     }
     bool contains(const letter_mask &other) const
     {
@@ -201,7 +200,7 @@ public:
     }
     static letter_mask all()
     {
-        return letter_mask((1 << (ALPHABET_SIZE+1)) - 1, 0);
+        return letter_mask(U32((1 << (ALPHABET_SIZE+1)) - 1));
     }
     /************************************************************************
      * iterator - return each letter covered by the mask (as a one-bit
@@ -322,10 +321,18 @@ public:
         masks = avx::bool_or(masks, other.masks);
         return *this;
     }
+    word_mask and_not(const word_mask &other)
+    {
+        return avx::and_not(masks, other.masks);
+    }
     U32 count_letter(char letter) const;
     U32 count_letter(letter_mask m) const;
     match_mask match_letter(char letter) const;
     match_mask match_letter(letter_mask m) const;
+    letter_mask all_letters() const
+    {
+        return letter_mask(avx::or_i32(masks));
+    }
     match_mask to_mask() 
     {
         __m256i zeros = _mm256_setzero_si256();
@@ -364,13 +371,13 @@ public:
     class match_result
     {
     private:
-        U16 exact_match = 0;
-        U16 partial_match = 0;
+        match_mask exact_match = 0;
+        match_mask partial_match = 0;
     public:
         match_result() {};
         match_result(const match_result &other)
             : exact_match(other.exact_match), partial_match(other.partial_match) { };
-        match_result(U16 e, U16 p)
+        match_result(match_mask e, match_mask p)
             : exact_match(e & good_bits()), partial_match(p & good_bits()) { };
         match_result(const string &m)
         {
@@ -394,7 +401,7 @@ public:
         }
         U16 get_hash() const
         {
-            return (partial_match << 5) | exact_match;
+            return (partial_match.get() << 5) | exact_match.get();
         }
         bool parse(const string &s);
         static U16 good_bits()
@@ -413,13 +420,12 @@ public:
             bool greater_ok = false;
         public:
             letter_target() { };
-            letter_target(char letter, U16 exact_mask, U16 c, bool gtok)
+            letter_target(char letter, match_mask exact_mask, U16 c, bool gtok)
                 : count(c), greater_ok(gtok)
             {
-                __m256i target_all = _mm256_set1_epi32(letter_mask(letter).get());
+                word_mask target_all = set_letters(letter_mask(letter));
                 __m256i zeros = _mm256_setzero_si256();
-                __mmask8 m2 = (1 << WORD_LENGTH) - 1;
-                _mm256_mask_storeu_epi32(&mask, m2, _mm256_mask_blend_epi32(exact_mask, target_all, zeros));
+                mask = avx::mask_blend(exact_mask.get(), target_all.get(), avx::zero(__m256i()));
             }
         };
     private:
@@ -491,7 +497,7 @@ public:
     }
     styled_text styled_str(const match_result &mr) const;
     match_result match(const wordle_word &target) const;
-    letter_mask masked_letters(U16 mask) const;
+    letter_mask masked_letters(match_mask mask) const;
     word_mask get_exact_mask() const { return exact_mask; };
     word_mask get_all_mask() const { return all_mask; };
     word_mask get_once_mask() const { return once_mask; };
@@ -507,7 +513,7 @@ public:
     }
     static word_mask set_letters(letter_mask letters)
     {
-        return avx::set1_masked(__m256i(), letters.get(), 0x1f); // make_letters_mask().get());
+        return avx::set1_masked(__m256i(), letters.get(), make_letters_mask().get());
     }
     static string groom(const string &w);
     static void set_verbose(bool v) { verbose = v; };
