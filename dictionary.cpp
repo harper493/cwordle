@@ -37,6 +37,11 @@ bool dictionary::insert(const string &w)
         if (word_map.find(groomed) == word_map.end()) {
             size_t i = words.size();
             words.emplace_back(groomed);
+            wordle_word w2;
+            w2.set_word_2(groomed);
+            if (!words.back().identical(w2)) {
+                std::cout << formatted("Inconsisent values for '%s'\n", groomed);
+            }                
             word_map[groomed] = i;
             result = true;
         }

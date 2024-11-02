@@ -36,6 +36,20 @@ namespace avx
     {
         _mm256_mask_storeu_epi32(&dst, mask, value);
     }
+    #if 0
+    inline U32 extract(__m256i src, size_t index)
+    {
+        return _mm256_extract_epi32(src, index);
+    }
+    inline void insert(__m256i dst, U32 value, size_t index)
+    {
+        _mm256_insert_epi32(dst, value, index);
+    }
+    #endif
+    inline bool equal(__m256i p, __m256i q)
+    {
+        return _mm256_cmpneq_epi32_mask(p, q)==0;
+    }
     inline __m256i bool_and(__m256i p, __m256i q)
     {
         return _mm256_and_si256(p, q);
@@ -51,6 +65,10 @@ namespace avx
     inline __m256i set1(__m256i, U32 x)
     {
         return _mm256_set1_epi32(x);
+    }
+    inline __m256i conflict(__m256i src)
+    {
+        return _mm256_conflict_epi32(src);
     }
     inline __m256i set1_masked(__m256i, U32 x, __mmask8 mask)
     {
@@ -106,6 +124,20 @@ namespace avx
     {
         _mm512_mask_storeu_epi32(&dst, mask, value);
     }
+    #if 0
+    inline U32 extract(__m512i src, size_t index)
+    {
+        return _mm512_extract_epi32(src, index);
+    }
+    inline void insert(__m512i dst, U32 value, size_t index)
+    {
+        _mm512_insert_epi32(dst, value, index);
+    }
+    #endif
+    inline bool equal(__m512i p, __m512i q)
+    {
+        return _mm512_cmpneq_epi32_mask(p, q)==0;
+    }
     inline __m512i bool_and(__m512i p, __m512i q)
     {
         return _mm512_and_si512(p, q);
@@ -121,6 +153,10 @@ namespace avx
     inline __m512i set1(__m512i, U32 x)
     {
         return _mm512_set1_epi32(x);
+    }
+    inline __m512i conflict(__m512i src)
+    {
+        return _mm512_conflict_epi32(src);
     }
     inline __m512i set1_masked(__m512i, U32 x, __mmask16 mask)
     {

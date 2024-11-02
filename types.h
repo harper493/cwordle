@@ -12,6 +12,7 @@
 #include <functional>
 #include <mutex>
 #include <set>
+#include <ranges>
 #include <boost/lexical_cast.hpp>
 #include <boost/range/irange.hpp>
 
@@ -31,6 +32,7 @@ using std::cout;
 using namespace std::placeholders;
 
 using namespace std::chrono;
+namespace views = std::views;
 
 using boost::format;
 

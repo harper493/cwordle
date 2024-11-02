@@ -136,7 +136,11 @@ public:
     {
         return mask == other.mask;
     }
-    letter_mask operator|(const letter_mask &other) const
+    bool operator<(const letter_mask &other) const
+    {
+        return mask < other.mask;
+    }
+   letter_mask operator|(const letter_mask &other) const
     {
         letter_mask result = *this;
         result |= other;
@@ -277,31 +281,62 @@ public:
 class word_mask
 {
 public:
+    typedef __m256i mask_t;
     typedef array<letter_mask, WORD_LENGTH> just_letters_t;
     typedef just_letters_t::iterator iterator;
     typedef just_letters_t::const_iterator const_iterator;
 private:
-    __m256i masks;
+    mask_t masks;
 public:
-    word_mask() : masks(_mm256_setzero_si256()) { };
-    word_mask(__m256i m) : masks(m) { };
+    word_mask() : masks(avx::zero(mask_t())) { };
+    word_mask(mask_t m) : masks(m) { };
+    word_mask(const string &s)
+    {
+        masks = _mm256_setzero_si256();
+        for (int i : irange(0, int(s.size()))) {
+            (*this)[i] = letter_mask(s[i]);
+        }
+    }
     word_mask &operator=(const word_mask &other)
     {
         masks = other.masks;
         return *this;
     }
-    const __m256i &as_m256i() const { return masks; };
-    __m256i &as_m256i() { return masks; };
-    __m256i get() const { return masks; };
+    const mask_t &as_mask() const { return masks; };
+    mask_t &as_mask() { return masks; };
+    mask_t get() const { return masks; };
     iterator begin() { return as_letters().begin(); }
     iterator end() { return as_letters().end(); }
+    explicit operator bool() const
+    {
+        return !avx::equal(masks, avx::zero(masks));
+    }
+    bool operator==(const word_mask &other) const
+    {
+        return avx::equal(masks, other.masks);
+    }
+    bool operator!=(const word_mask &other) const
+    {
+        return !avx::equal(masks, other.masks);
+    }
+    #if 0
+    letter_mask operator[](size_t idx) const
+    {
+        return letter_mask(avx::extract(masks, idx));
+    }
+    #else
+    const letter_mask &operator[](size_t idx) const
+    {
+        return as_letters()[idx];
+    }
     letter_mask &operator[](size_t idx)
     {
         return as_letters()[idx];
     }
-    const letter_mask &operator[](size_t idx) const
+    #endif
+    void insert(letter_mask v, size_t idx)
     {
-        return as_letters()[idx];
+        (*this)[idx] = v;
     }
     word_mask operator&(const word_mask &other) const
     {
@@ -335,18 +370,18 @@ public:
     }
     match_mask to_mask() 
     {
-        __m256i zeros = _mm256_setzero_si256();
+        mask_t zeros = _mm256_setzero_si256();
         return _mm256_cmpgt_epu32_mask(masks, zeros);
     }
     letter_counter count_letters() const;
     string str() const;
     static word_mask set_letters(letter_mask m)
     {
-        return word_mask(avx::set1(__m256i(), m.get()));
+        return word_mask(avx::set1(mask_t(), m.get()));
     }
     static word_mask set_letters(letter_mask m, match_mask mask)
     {
-        return word_mask(avx::set1_masked(__m256i(), m.get(), mask.get()));
+        return word_mask(avx::set1_masked(mask_t(), m.get(), mask.get()));
     }
 private:
     just_letters_t &as_letters()
@@ -455,12 +490,10 @@ private:
     word_mask all_mask;
     word_mask once_mask;
     word_mask twice_mask;
-    word_mask thrice_mask;
     word_mask many_mask;
     letter_mask all_letters;
     letter_mask once_letters;
     letter_mask twice_letters;
-    letter_mask thrice_letters;
     letter_mask many_letters;
     letter_mask repeated_letters;
     text_t text;
@@ -475,6 +508,7 @@ public:
         set_word(w);
     }
     void set_word(const string &w);
+    void set_word_2(const string &w);
     bool good() const
     {
         return text[0] != 0;
@@ -495,6 +529,7 @@ public:
     {
         return text != other.text;
     }
+    bool identical(const wordle_word &other) const;
     styled_text styled_str(const match_result &mr) const;
     match_result match(const wordle_word &target) const;
     letter_mask masked_letters(match_mask mask) const;
@@ -502,11 +537,11 @@ public:
     word_mask get_all_mask() const { return all_mask; };
     word_mask get_once_mask() const { return once_mask; };
     word_mask get_twice_mask() const { return twice_mask; };
-    word_mask get_thrice_mask() const { return thrice_mask; };
+    word_mask get_many_mask() const { return many_mask; };
     letter_mask get_all_letters() const { return all_letters; };
     letter_mask get_once_letters() const { return once_letters; };
     letter_mask get_twice_letters() const { return twice_letters; };
-    letter_mask get_thrice_letters() const { return thrice_letters; };
+    letter_mask get_many_letters() const { return many_letters; };
     static match_mask make_letters_mask()
     {
         return match_mask((1<<WORD_LENGTH) - 1);

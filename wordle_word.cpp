@@ -109,8 +109,8 @@ U32 add256_i32(__m256i x)
 }
 
 /************************************************************************
- * set_word - set up a wordle_wodr for a particular 5-letter word, setting
- * up all the fields decsribed in the header comment.
+ * set_word - set up a wordle_word for a particular 5-letter word, setting
+ * up all the fields described in the header comment.
  ***********************************************************************/
 
 void wordle_word::set_word(const string &w)
@@ -129,18 +129,18 @@ void wordle_word::set_word(const string &w)
         } else if (twice.contains(m)) {
             twice.remove(m);
             many |= m;
-        } else {
+        } else if (!many.contains(m)) {
             once |= m;
         }
     }
-    repeated_letters = once | twice | many;
+    repeated_letters = twice | many;
     all_letters = once | repeated_letters;
     once_letters = once;
     twice_letters = twice;
     many_letters = many;
     letter_mask seen;
     letter_mask seen2;
-    all_mask = wordle_word::set_letters(all_letters); 
+    all_mask = set_letters(all_letters); 
     for (int i : irange(0, WORD_LENGTH)) {
         char ch = text[i];
         letter_mask m(ch);
@@ -166,6 +166,57 @@ void wordle_word::set_word(const string &w)
             many_mask[i] = m;
         }
     }
+}
+
+/************************************************************************
+ * set_word_2 - as above but use AVX instructions
+ ***********************************************************************/
+
+void wordle_word::set_word_2(const string &w)
+{
+    memset(this, 0, sizeof(wordle_word));
+    memcpy(&text, w.data(), w.size());
+    exact_mask = word_mask(w);
+    word_mask conflict(avx::conflict(exact_mask.get()));
+    if (conflict) {
+        std::map<letter_mask, size_t> seen;
+        for (int i : views::iota(0, WORD_LENGTH) | views::reverse) {
+            letter_mask ch(text[i]);
+            letter_mask m = conflict[i];
+            size_t sz = m.size();
+            if (seen.contains(ch)) {
+                size_t seensz = seen[ch];
+                if (sz==0) {
+                    once_mask.insert(ch, i);
+                }
+                if (sz<=1 && seensz>=1) {
+                    twice_mask.insert(ch, i);
+                }
+                if (seensz>1) {
+                    many_mask.insert(ch, i);
+                }
+            } else {
+                seen[ch] = sz;
+                switch (sz) {
+                case 0:             // letter only present once
+                    once_letters |= ch;
+                    once_mask.insert(ch, i);
+                    break;
+                case 1:             // letter present twice
+                    twice_letters |= ch;
+                    twice_mask.insert(ch, i);
+                    break;
+                default:            // letter present more than twice
+                    many_letters |= ch;
+                    many_mask.insert(ch, i);
+                    break;
+                }
+            }
+        }
+    }
+    repeated_letters = twice_letters | many_letters;
+    all_letters = once_letters | repeated_letters;
+    all_mask = set_letters(all_letters); 
 }
 
 /************************************************************************
@@ -259,7 +310,7 @@ string word_mask::str() const
 {
     string result;
     for (size_t i : irange(0, WORD_LENGTH)) {
-        auto &lm = (*this)[i];
+        auto lm = (*this)[i];
         if (lm) {
             result += lm.str();
         } else {
@@ -273,10 +324,10 @@ string word_mask::str() const
 }
 
 /************************************************************************
- * match - compare two words, erturning a match_result indicating which
+ * match - compare two words, returning a match_result indicating which
  * letters are partial and exact matches.
  *
- * If there were never any repeated letters, this would be easy.Bit
+ * If there were never any repeated letters, this would be easy. But
  * there are. We have to treat repeated letters separately, otherwise
  * we would get false positives. For example, if we match "never"
  * against "evict" we must get just one partial match, and another 
@@ -363,14 +414,30 @@ wordle_word::match_result wordle_word::match(const wordle_word &target) const
 }
 
 /************************************************************************
- * match_result::parse - turn a string of 0/1/2 into teh corresponding
+ * identical - return true iff all of the derived fields are the same
+ ***********************************************************************/
+
+bool wordle_word::identical(const wordle_word &other) const
+{
+    return exact_mask==other.exact_mask
+        && all_mask==other.all_mask
+        && once_mask==other.once_mask
+        && twice_mask==other.twice_mask
+        && many_mask==other.many_mask
+        && all_letters==other.all_letters
+        && once_letters==other.once_letters
+        && twice_letters==other.twice_letters
+        && many_letters==other.many_letters
+        && repeated_letters==other.repeated_letters;
+}
+
+/************************************************************************
+ * match_result::parse - turn a string of 0/1/2 into the corresponding
  * match result, where:
  *
  * 0 => no match
  * 1 => partial match
  * 2 => exact match
- *
- * This is used by the unit tests.
  ***********************************************************************/
 
 bool wordle_word::match_result::parse(const string &m)
@@ -500,13 +567,13 @@ bool wordle_word::match_target::conforms(const wordle_word &other) const
     bool result = false;
     if (!(absent_letters & other.all_letters)) {
         if ((required_letters & other.all_letters) == required_letters) {
-            auto exact = _mm256_and_si256(exact_mask.as_m256i(), other.exact_mask.as_m256i());
+            auto exact = _mm256_and_si256(exact_mask.get(), other.exact_mask.get());
             if (count_matches(exact) == exact_match_count) {
-                auto partial = _mm256_and_si256(only_partial_mask.as_m256i(), other.exact_mask.as_m256i());
+                auto partial = _mm256_and_si256(only_partial_mask.get(), other.exact_mask.get());
                 if (count_matches(partial) == 0) {
                     result = true;
                     for (const letter_target &lt : letter_targets) {
-                        auto ltm = _mm256_and_si256(lt.mask.as_m256i(), other.exact_mask.as_m256i());
+                        auto ltm = _mm256_and_si256(lt.mask.get(), other.exact_mask.get());
                         auto ltmsz = count_matches(ltm);
                         if (!(lt.greater_ok ?
                               ltmsz >= lt.count
