@@ -16,8 +16,10 @@ typedef counter_map<char, U16> letter_counter;
 
 class match_mask
 {
+public:
+    typedef __mmask8 mask_t;
 private:
-    __mmask8 my_mask;
+    mask_t my_mask;
 public:
     match_mask()
         : my_mask(0)
@@ -83,6 +85,11 @@ public:
     {
         return __builtin_popcount(my_mask);
     }
+    static mask_t all()
+    {
+        return (1 << WORD_LENGTH) - 1;
+    }
+
     /************************************************************************
      * reduce_bitcount - reduce the number of set bits to 'target_size',
      * starting with the highest order bits
@@ -309,7 +316,7 @@ public:
     iterator end() { return as_letters().end(); }
     explicit operator bool() const
     {
-        return !avx::equal(masks, avx::zero(masks));
+        return !avx::is_zero(masks);
     }
     bool operator==(const word_mask &other) const
     {
@@ -359,6 +366,28 @@ public:
     word_mask and_not(const word_mask &other)
     {
         return avx::and_not(masks, other.masks);
+    }
+    word_mask select(match_mask m)
+    {
+        return word_mask(avx::mask_blend(m.get(), avx::zero(mask_t()), masks));
+    }
+    word_mask blend(match_mask m, const word_mask &other)
+    {
+        return word_mask(avx::mask_blend(m.get(), other.masks, masks));
+    }
+    word_mask count_bits() const
+    {
+        mask_t zero(avx::zero(mask_t()));
+        mask_t ones(avx::set1(mask_t(), 1));
+        auto done = avx::cmpeq_mask(masks, zero);
+        mask_t result = zero;
+        mask_t m = masks;
+        while (!avx::is_zero(m)) {
+            done |= avx::cmpeq_mask(m, zero);
+            result = avx::add(result, avx::mask_blend(~done, zero, ones));
+            m = avx::bool_and(m, avx::sub(m, ones));
+        }
+        return word_mask(result);
     }
     U32 count_letter(char letter) const;
     U32 count_letter(letter_mask m) const;
@@ -509,6 +538,7 @@ public:
     }
     void set_word(const string &w);
     void set_word_2(const string &w);
+    void set_word_3(const string &w);
     bool good() const
     {
         return text[0] != 0;

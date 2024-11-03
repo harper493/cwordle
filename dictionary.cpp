@@ -38,7 +38,7 @@ bool dictionary::insert(const string &w)
             size_t i = words.size();
             words.emplace_back(groomed);
             wordle_word w2;
-            w2.set_word_2(groomed);
+            w2.set_word_3(groomed);
             if (!words.back().identical(w2)) {
                 std::cout << formatted("Inconsisent values for '%s'\n", groomed);
             }                

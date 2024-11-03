@@ -115,7 +115,6 @@ U32 add256_i32(__m256i x)
 
 void wordle_word::set_word(const string &w)
 {
-    memset(this, 0, sizeof(wordle_word));
     letter_mask once;
     letter_mask twice;
     letter_mask many;
@@ -174,48 +173,77 @@ void wordle_word::set_word(const string &w)
 
 void wordle_word::set_word_2(const string &w)
 {
-    memset(this, 0, sizeof(wordle_word));
     memcpy(&text, w.data(), w.size());
     exact_mask = word_mask(w);
     word_mask conflict(avx::conflict(exact_mask.get()));
-    if (conflict) {
-        std::map<letter_mask, size_t> seen;
-        for (int i : views::iota(0, WORD_LENGTH) | views::reverse) {
-            letter_mask ch(text[i]);
-            letter_mask m = conflict[i];
-            size_t sz = m.size();
-            if (seen.contains(ch)) {
-                size_t seensz = seen[ch];
-                if (sz==0) {
-                    once_mask.insert(ch, i);
-                }
-                if (sz<=1 && seensz>=1) {
-                    twice_mask.insert(ch, i);
-                }
-                if (seensz>1) {
-                    many_mask.insert(ch, i);
-                }
-            } else {
-                seen[ch] = sz;
-                switch (sz) {
-                case 0:             // letter only present once
-                    once_letters |= ch;
-                    once_mask.insert(ch, i);
-                    break;
-                case 1:             // letter present twice
-                    twice_letters |= ch;
-                    twice_mask.insert(ch, i);
-                    break;
-                default:            // letter present more than twice
-                    many_letters |= ch;
-                    many_mask.insert(ch, i);
-                    break;
-                }
+    std::map<letter_mask, size_t> seen;
+    for (int i : views::iota(0, WORD_LENGTH) | views::reverse) {
+        letter_mask ch(text[i]);
+        letter_mask m = conflict[i];
+        size_t sz = m.size();
+        if (seen.contains(ch)) {
+            size_t seensz = seen[ch];
+            if (sz==0) {
+                once_mask.insert(ch, i);
+            }
+            if (sz<=1 && seensz>=1) {
+                twice_mask.insert(ch, i);
+            }
+            if (seensz>1) {
+                many_mask.insert(ch, i);
+            }
+        } else {
+            seen[ch] = sz;
+            switch (sz) {
+            case 0:             // letter only present once
+                once_letters |= ch;
+                once_mask.insert(ch, i);
+                break;
+            case 1:             // letter present twice
+                twice_letters |= ch;
+                twice_mask.insert(ch, i);
+                break;
+            default:            // letter present more than twice
+                many_letters |= ch;
+                many_mask.insert(ch, i);
+                break;
             }
         }
     }
     repeated_letters = twice_letters | many_letters;
     all_letters = once_letters | repeated_letters;
+    all_mask = set_letters(all_letters); 
+}
+
+/************************************************************************
+ * set_word_3 - as above but use AVX instructions even more
+ ***********************************************************************/
+
+void wordle_word::set_word_3(const string &w)
+{
+    memcpy(&text, w.data(), w.size());
+    exact_mask = word_mask(w);
+    all_letters = exact_mask.all_letters();
+    auto zero(avx::zero(word_mask::mask_t()));
+    auto ones = avx::set1(word_mask::mask_t(), 1);
+    word_mask conflict(avx::conflict(exact_mask.get()));
+    conflict = conflict.select(match_mask::all());
+    conflict = conflict.count_bits();
+    auto onces = avx::cmplt_mask(conflict.as_mask(), ones) & match_mask::all();
+    auto manys = avx::cmpgt_mask(conflict.as_mask(), ones);
+    many_letters = exact_mask.select(manys).all_letters();
+    auto many_select(set_letters(many_letters));
+    auto many2 = (exact_mask & many_select).to_mask();
+    many_mask = many_select.select(many2);
+    auto twices = avx::cmpeq_mask(conflict.as_mask(), ones);
+    twice_letters = exact_mask.select(twices).all_letters() & ~many_letters;
+    auto twice1 = exact_mask.select(twices & ~manys);
+    auto twice_select(set_letters(twice1.all_letters()));
+    auto twice2 = (exact_mask & twice_select).select((onces | twices) & ~manys).to_mask();
+    twice_mask = exact_mask.select(twice2);
+    once_mask = word_mask(avx::mask_blend(onces, zero, exact_mask.as_mask()));
+    once_letters = all_letters & ~(many_letters | twice_letters);
+    repeated_letters = twice_letters | many_letters;
     all_mask = set_letters(all_letters); 
 }
 
@@ -477,9 +505,6 @@ bool wordle_word::match_result::parse(const string &m)
 wordle_word::match_target::match_target(const wordle_word &target, const match_result &mr)
     : my_word(target), my_mr(mr)
 {
-    if (target.str() == "beers") {
-        int i = 0;
-    }
     match_mask only_partial = my_mr.partial_match & ~my_mr.exact_match;
     partial_letters = my_word.masked_letters(only_partial);
     exact_letters = my_word.masked_letters(my_mr.exact_match);

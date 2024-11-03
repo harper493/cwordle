@@ -46,9 +46,21 @@ namespace avx
         _mm256_insert_epi32(dst, value, index);
     }
     #endif
+    inline bool is_zero(__m256i p)
+    {
+        return _mm256_testz_si256(p, p);
+    }
     inline bool equal(__m256i p, __m256i q)
     {
         return _mm256_cmpneq_epi32_mask(p, q)==0;
+    }
+    inline __m256i add(__m256i p, __m256i q)
+    {
+        return _mm256_add_epi32(p, q);
+    }
+    inline __m256i sub(__m256i p, __m256i q)
+    {
+        return _mm256_sub_epi32(p, q);
     }
     inline __m256i bool_and(__m256i p, __m256i q)
     {
@@ -76,9 +88,37 @@ namespace avx
         __m256i r2 = _mm256_mask_blend_epi32(mask, zero(__m256i()), r1);
         return r2;
     }
-    inline __mmask8 cmpgt(__m256i x, __m256i y)
+    inline __m256i cmpeq(__m256i x, __m256i y)
+    {
+        return _mm256_cmpeq_epi32(x, y);
+    }
+    inline __m256i cmpne(__m256i x, __m256i y)
+    {
+        return _mm256_xor_si256(_mm256_cmpeq_epi32(x, y), _mm256_set1_epi32(-1));        
+    }
+    inline __m256i cmpgt(__m256i x, __m256i y)
+    {
+        return _mm256_cmpgt_epi32(x, y);
+    }
+    inline __m256i cmplt(__m256i x, __m256i y)
+    {
+        return _mm256_cmpgt_epi32(y, x);
+    }
+    inline __mmask8 cmpeq_mask(__m256i x, __m256i y)
+    {
+        return _mm256_cmpeq_epu32_mask(x, y);
+    }
+    inline __mmask8 cmpne_mask(__m256i x, __m256i y)
+    {
+        return _mm256_cmpneq_epu32_mask(x, y);
+    }
+    inline __mmask8 cmpgt_mask(__m256i x, __m256i y)
     {
         return _mm256_cmpgt_epu32_mask(x, y);
+    }
+    inline __mmask8 cmplt_mask(__m256i x, __m256i y)
+    {
+        return _mm256_cmplt_epu32_mask(x, y);
     }
     inline __m256i mask_blend(U16 mask, __m256i x, __m256i y)
     {
