@@ -126,6 +126,7 @@ namespace avx
     }
     inline U32 or_i32(__m256i x)
     {
+#if 0
         __m256i x0 = _mm256_permute2x128_si256(x,x,1);
         __m256i x1 = _mm256_or_si256(x,x0);
         __m256i x2 = _mm256_shuffle_epi32(x1,0b01001110);
@@ -133,15 +134,22 @@ namespace avx
         __m256i x4 = _mm256_shuffle_epi32(x3, 0b11100001);
         __m256i x5 = _mm256_or_si256(x3, x4);
         return _mm_cvtsi128_si32(_mm256_castsi256_si128(x5)) ;
+#else
+        return _mm512_reduce_or_epi32(_mm512_castsi256_si512(x));
+#endif
     }
     inline U32 add_i32(__m256i x)
     {
+#if 0
         __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(x),
                                        _mm256_extracti128_si256(x, 1));
         __m128i hi64  = _mm_unpackhi_epi64(sum128, sum128);
         __m128i sum64 = _mm_add_epi32(hi64, sum128);
         __m128i hi32  = _mm_shuffle_epi32(sum64, _MM_SHUFFLE(2, 3, 0, 1));    // Swap the low two elements
         return _mm_cvtsi128_si32(_mm_add_epi32(sum64, hi32));
+#else
+        return _mm512_reduce_add_epi32(_mm512_castsi256_si512(x));
+#endif
     }
     
     /************************************************************************
