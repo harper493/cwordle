@@ -119,7 +119,7 @@ U32 add256_i32(__m256i x)
  * where each letter has occurred.
  ***********************************************************************/
 
-void wordle_word::set_word_basic(const string &w)
+void wordle_word::set_word_basic(const string_view &w)
 {
     letter_mask once;
     letter_mask twice;
@@ -185,7 +185,7 @@ void wordle_word::set_word_basic(const string &w)
  * final repeat count for the letter, to make the appropraite entries.
  ***********************************************************************/
 
-void wordle_word::set_word_2(const string &w)
+void wordle_word::set_word_2(const string_view &w)
 {
     memcpy(&text, w.data(), w.size());
     exact_mask = word_mask(w);
@@ -248,7 +248,7 @@ void wordle_word::set_word_2(const string &w)
  * Performance is about equal to set_word_2, above.
  ***********************************************************************/
 
-void wordle_word::set_word(const string &w)
+void wordle_word::set_word(const string_view &w)
 {
     memcpy(&text, w.data(), w.size());
     exact_mask = word_mask(w);
@@ -300,7 +300,7 @@ letter_mask wordle_word::masked_letters(match_mask mask) const
  * Returns either the groomed word, or an empty string if the word
  * is not good.
  ***********************************************************************/
-string wordle_word::groom(const string &w)
+string wordle_word::groom(const string_view &w)
 {
     string result;
     letter_counter letter_count;

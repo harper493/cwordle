@@ -29,7 +29,7 @@ bool dictionary::load_file(const string &filename)
  * if it already present.
  ***********************************************************************/
 
-bool dictionary::insert(const string &w, int method/*=0*/)
+bool dictionary::insert(const string_view &w, int method/*=0*/)
 {
     bool result = false;
     string groomed = wordle_word::groom(w);
@@ -49,10 +49,10 @@ bool dictionary::insert(const string &w, int method/*=0*/)
  * value if it is not found.
  ***********************************************************************/
 
-optional<dictionary::word_index_t> dictionary::find(const string &w) const
+optional<dictionary::word_index_t> dictionary::find(const string_view &w) const
 {
     optional<word_index_t> result;
-    auto iter = word_map.find(w);
+    auto iter = word_map.find(string(w));
     if (iter != word_map.end()) {
         result = iter->second;
     }
@@ -64,7 +64,7 @@ optional<dictionary::word_index_t> dictionary::find(const string &w) const
  * for it is if so. Return a null value if the word is not found.
  ***********************************************************************/
 
-optional<const wordle_word*> dictionary::find_word(const string &w) const
+optional<const wordle_word*> dictionary::find_word(const string_view &w) const
 {
     optional<const wordle_word*> result;
     auto ww = find(w);
@@ -78,7 +78,7 @@ optional<const wordle_word*> dictionary::find_word(const string &w) const
  * get_random - get a random word from the dictionary.
  ***********************************************************************/
 
-string dictionary::get_random() const
+string_view dictionary::get_random() const
 {
     return get_string(random::get_int(size()));
 }

@@ -95,7 +95,7 @@ const wordle_word &cwordle::get_current_word() const
  * is not a valid word.
  ***********************************************************************/
     
-bool cwordle::set_word(const string &w)
+bool cwordle::set_word(const string_view &w)
 {
     string groomed = wordle_word::groom(w);
     if (groomed.empty()) {

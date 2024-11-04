@@ -297,7 +297,7 @@ private:
 public:
     word_mask() : masks(avx::zero(mask_t())) { };
     word_mask(mask_t m) : masks(m) { };
-    word_mask(const string &s)
+    word_mask(const string_view &s)
     {
         masks = _mm256_setzero_si256();
         for (int i : irange(0, int(s.size()))) {
@@ -539,11 +539,11 @@ public:
     {
         text.fill(0);
     }
-    wordle_word(const string &w)
+    wordle_word(const string_view &w)
     {
         set_word(w);
     }
-    wordle_word(const string &w, int method)
+    wordle_word(const string_view &w, int method)
     {
         switch (method) {
         case 1:
@@ -559,16 +559,16 @@ public:
             break;
         }
     }
-    void set_word(const string &w);
-    void set_word_basic(const string &w);
-    void set_word_2(const string &w);
+    void set_word(const string_view &w);
+    void set_word_basic(const string_view &w);
+    void set_word_2(const string_view &w);
     bool good() const
     {
         return text[0] != 0;
     }
-    string str() const
+    string_view str() const
     {
-        return string(text.begin(), text.end());
+        return string_view(text.begin(), text.end());
     }
     bool operator<(const wordle_word &other) const
     {
@@ -603,7 +603,7 @@ public:
     {
         return avx::set1_masked(__m256i(), letters.get(), make_letters_mask().get());
     }
-    static string groom(const string &w);
+    static string groom(const string_view&w);
     static void set_verbose(bool v) { verbose = v; };
 private:
     match_result do_match(const wordle_word &target, bool verbose) const _always_inline;

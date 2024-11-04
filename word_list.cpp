@@ -59,7 +59,7 @@ word_list word_list::sorted() const
     set<string> words;
     fill();
     for (dictionary::word_index_t i : *this) {
-        words.insert(my_dict[i].str());
+        words.insert(string(my_dict[i].str()));
     }
     for (const string &w : words) {
         result.insert(my_dict.find(w).value_or(0));

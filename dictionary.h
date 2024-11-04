@@ -25,18 +25,18 @@ public:
     {
         return words;
     }
-    bool insert(const string &w, int method=0);
+    bool insert(const string_view &w, int method=0);
     const wordle_word &operator[](word_index_t idx) const
     {
         return words[idx];
     }
-    string get_string(word_index_t idx) const
+    string_view get_string(word_index_t idx) const
     {
         return words[idx].str();
     }
-    optional<word_index_t> find(const string &w) const;
-    optional<const wordle_word*> find_word(const string &w) const;
-    string get_random() const;
+    optional<word_index_t> find(const string_view &w) const;
+    optional<const wordle_word*> find_word(const string_view &w) const;
+    string_view get_random() const;
     template<class RANGE>
     void load(const RANGE &r)
     {

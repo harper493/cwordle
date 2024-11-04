@@ -30,7 +30,7 @@ string tests::t(const string &w1, const string &w2, const string &correct,
     wordle_word ww1(w1);
     wordle_word ww2(w2);
     wordle_word::match_result c(correct);
-    auto m = ww2.match(w1);
+    auto m = ww2.match(ww1);
     auto result =  ww2.styled_str(m);
     styled_text sw1(w1, styled_text::black);
     styled_text sw2(w2, styled_text::black);

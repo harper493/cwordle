@@ -39,7 +39,7 @@ public:
         return results;
     }
     const word_list &remaining();
-    bool set_word(const string &w);
+    bool set_word(const string_view &w);
     void set_result(const wordle_word &w, const wordle_word::match_result &mr);
     wordle_word::match_result try_word(const wordle_word &w);
     void undo();
