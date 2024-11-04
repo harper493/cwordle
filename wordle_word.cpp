@@ -241,7 +241,7 @@ void wordle_word::set_word_3(const string &w)
     auto twice_select(set_letters(twice1.all_letters()));
     auto twice2 = (exact_mask & twice_select).select((onces | twices) & ~manys).to_mask();
     twice_mask = exact_mask.select(twice2);
-    once_mask = word_mask(avx::mask_blend(onces, zero, exact_mask.as_mask()));
+    once_mask = exact_mask.select(onces);
     once_letters = all_letters & ~(many_letters | twice_letters);
     repeated_letters = twice_letters | many_letters;
     all_mask = set_letters(all_letters); 

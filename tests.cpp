@@ -2,7 +2,10 @@
 #include "styled_text.h"
 #include "wordle_word.h"
 #include "formatted.h"
+#include "timing_reporter.h"
+#include "dictionary.h"
 #include "entropy.h"
+#include "cwordle.h"
 
 void tests::do_test(int t)
 {
@@ -12,6 +15,9 @@ void tests::do_test(int t)
         break;
     case 2:
         test2();
+        break;
+    case 3:
+        test3();
         break;
     default:
         break;
@@ -142,4 +148,33 @@ void tests::test2()
         d1[i] = i;
     }
     cout << entropy_slowest(d1) << " " << entropy_slow(d1) << " " << entropy(d1) << "\n";
+}
+
+/************************************************************************
+ * Performance test of three methods for loading dictionary 
+ ***********************************************************************/
+
+void tests::test3()
+{
+    const int iterations = 100;
+    for (const auto &w : the_wordle->get_dictionary()) {
+        wordle_word w1(w.str(), 1);
+        wordle_word w2(w.str(), 2);
+        wordle_word w3(w.str(), 3);
+        if (!w1.identical(w2)
+            || !w2.identical(w3)
+            || !w1.identical(w3)) {
+            std::cout << formatted("Inconsisent values for '%s'\n", w.str());
+        }
+    }
+    for (auto m : irange(1, 4)) {
+        timing_reporter tr1;
+        dictionary dict1;
+        for (auto i : irange(0, iterations)) {
+            for (const auto &w : the_wordle->get_dictionary()) {
+                dict1.insert(w.str(), m);
+            }
+        }
+        std::cout << tr1.report(dict1.size(), "words", formatted("With set_word #%d: ", m));
+    }
 }

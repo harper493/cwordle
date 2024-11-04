@@ -62,13 +62,12 @@ public:
         const keyword *find(const string &kw) const;
     };
 private:
-    cwordle &the_wordle;
     string my_line;
     string rest_of_line;
     string cur_arg;
     bool show_timing = false;
 public:
-    commands(cwordle &cw);
+    commands();
     bool do_command(const string &line);
     void set_timing(bool t)
     {

@@ -48,10 +48,9 @@ auto output_color = styled_text::green;
  * Constructor - ensure we have a new random word.
  ***********************************************************************/
 
-commands::commands(cwordle &cw)
-    : the_wordle(cw)
+commands::commands()
 {
-    the_wordle.new_word();
+    the_wordle->new_word();
 }
 
 /************************************************************************
@@ -103,7 +102,7 @@ void commands::do_best()
 {
     auto how_many = next_arg_int(true);
     check_finished();
-    auto result = the_wordle.best(how_many.value_or(1));
+    auto result = the_wordle->best(how_many.value_or(1));
     std::multimap<float, string> result_map;
     for (const auto &r : result) {
         if (r.value > 0) {
@@ -128,7 +127,7 @@ void commands::do_entropy()
 {
     const wordle_word &w = validate_word(next_arg());
     check_finished();
-    float entropy = the_wordle.entropy(w);
+    float entropy = the_wordle->entropy(w);
     cout << styled_text(formatted("Entropy of '%s' is %.3f", w.str(), entropy), output_color)
          << "\n";
 }
@@ -192,7 +191,7 @@ void commands::do_help()
 void commands::do_new()
 {
     check_finished();
-    the_wordle.new_word();
+    the_wordle->new_word();
 }
 
 /************************************************************************
@@ -203,7 +202,7 @@ void commands::do_recap()
 {
     check_started();
     check_finished();
-    for (const auto &w : the_wordle.get_results()) {
+    for (const auto &w : the_wordle->get_results()) {
         cout << w.show () << "\n";
     }
 }
@@ -219,7 +218,7 @@ void commands::do_remaining()
 {
     check_started();
     check_finished();
-    const auto &wl = the_wordle.remaining();
+    const auto &wl = the_wordle->remaining();
     int sz = wl.size();
     auto sorted_list = wl.sorted();
     vector<string> words;
@@ -254,7 +253,7 @@ void commands::do_result()
         throw syntax_exception("match string must contain only 0 for miss, 1 for partial match, 2 for exact match");
     }
     check_finished();
-    the_wordle.set_result(word, mr);
+    the_wordle->set_result(word, mr);
 }
 
 /************************************************************************
@@ -264,7 +263,7 @@ void commands::do_result()
 void commands::do_reveal()
 {
     check_finished();
-    cout << styled_text(formatted("The current word is '%s'", the_wordle.get_current_word().str()),
+    cout << styled_text(formatted("The current word is '%s'", the_wordle->get_current_word().str()),
                         output_color)
          << "\n";
 }
@@ -277,7 +276,7 @@ void commands::do_set()
 {
     string w = next_arg();
     check_finished();
-    the_wordle.set_word(validate_word(w).str());
+    the_wordle->set_word(validate_word(w).str());
 }
 
 /************************************************************************
@@ -297,13 +296,13 @@ void commands::do_try()
 {
     const wordle_word &ww = validate_word(next_arg());
     check_finished();
-    auto mr = the_wordle.try_word(ww);
-    if (the_wordle.remaining().size()==1 && ww==the_wordle.get_current_word()) {
-        cout << styled_text(formatted("Success! The word is '%s'", the_wordle.get_current_word().str()),
+    auto mr = the_wordle->try_word(ww);
+    if (the_wordle->remaining().size()==1 && ww==the_wordle->get_current_word()) {
+        cout << styled_text(formatted("Success! The word is '%s'", the_wordle->get_current_word().str()),
                             styled_text::magenta) << "\n";
     } else {
         cout << ww.styled_str(mr) << "\n";
-        if (the_wordle.remaining().size()==0) {
+        if (the_wordle->remaining().size()==0) {
             cout << styled_text("No remaining words\n", styled_text::red);
         }
     }
@@ -320,7 +319,7 @@ void commands::do_undo()
 {
     check_started();
     check_finished();
-    the_wordle.undo();
+    the_wordle->undo();
 }
 
 /************************************************************************
@@ -400,7 +399,7 @@ wordle_word commands::validate_word(const string &w)
 
 void commands::check_started() const
 {
-    if (the_wordle.size()==0) {
+    if (the_wordle->size()==0) {
         throw syntax_exception("You haven't tried anything yet");
     }
 }
@@ -423,7 +422,7 @@ void commands::check_finished()
 
 dictionary &commands::get_dict()
 {
-    return the_wordle.get_dictionary();
+    return the_wordle->get_dictionary();
 }
 
 /************************************************************************

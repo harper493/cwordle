@@ -29,19 +29,14 @@ bool dictionary::load_file(const string &filename)
  * if it already present.
  ***********************************************************************/
 
-bool dictionary::insert(const string &w)
+bool dictionary::insert(const string &w, int method/*=0*/)
 {
     bool result = false;
     string groomed = wordle_word::groom(w);
     if (!groomed.empty()) {
         if (word_map.find(groomed) == word_map.end()) {
             size_t i = words.size();
-            words.emplace_back(groomed);
-            wordle_word w2;
-            w2.set_word_3(groomed);
-            if (!words.back().identical(w2)) {
-                std::cout << formatted("Inconsisent values for '%s'\n", groomed);
-            }                
+            words.emplace_back(groomed, method);
             word_map[groomed] = i;
             result = true;
         }

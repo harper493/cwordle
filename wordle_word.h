@@ -536,6 +536,22 @@ public:
     {
         set_word(w);
     }
+    wordle_word(const string &w, int method)
+    {
+        switch (method) {
+        case 0:
+        case 1:
+        default:
+            set_word(w);
+            break;
+        case 2:
+            set_word_2(w);
+            break;
+        case 3:
+            set_word_3(w);
+            break;
+        }
+    }
     void set_word(const string &w);
     void set_word_2(const string &w);
     void set_word_3(const string &w);

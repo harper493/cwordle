@@ -8,6 +8,8 @@ class dictionary
 {
 public:
     typedef vector<wordle_word> words_t;
+    typedef words_t::iterator iterator;
+    typedef words_t::const_iterator const_iterator;
     typedef U32 word_index_t;
     typedef map<string, word_index_t> word_map_t;
     typedef vector<word_index_t> word_list_t;
@@ -23,7 +25,7 @@ public:
     {
         return words;
     }
-    bool insert(const string &w);
+    bool insert(const string &w, int method=0);
     const wordle_word &operator[](word_index_t idx) const
     {
         return words[idx];
@@ -43,6 +45,14 @@ public:
         }
     }
     bool load_file(const string &filename);
+    const_iterator begin() const
+    {
+        return words.begin();
+    }
+    const_iterator end() const
+    {
+        return words.end();
+    }
 };
 
 #endif

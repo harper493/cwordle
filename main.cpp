@@ -21,6 +21,8 @@ timing_reporter timers::entropy_timer(true);
 timing_reporter timers::match_timer(true);
 timing_reporter timers::conforms_timer(true);
 
+cwordle *the_wordle;
+
 bool do_options(int argc, char *argv[])
 {
     od.add_options()
@@ -32,7 +34,7 @@ bool do_options(int argc, char *argv[])
     try {
         po::store(po::parse_command_line(argc, argv, od), options);
     } catch (std::exception &exc) {
-        cout << "error in command line: " << exc.what() << '\n';
+        cout << "Error in command line: " << exc.what() << '\n';
         return false;
     }
     po::notify(options);
@@ -45,7 +47,7 @@ bool do_options(int argc, char *argv[])
 
 void run()
 {
-    cwordle cw;
+    the_wordle = new cwordle();
     string dict_file = options["dict"].as<string>();
     if (dict_file.empty()) {
         string vocab = options["vocab"].as<string>();
@@ -53,20 +55,20 @@ void run()
             vocab = "other";
         }
         if (vocab=="other") {
-            cw.load_words(other_words);
+            the_wordle->load_words(other_words);
         } else if (vocab=="wordle") {
-            cw.load_words(wordle_words);
+            the_wordle->load_words(wordle_words);
         } else {
             cout << formatted("Unknown vocabulary '%s'\n", vocab);
             return;
         }
     } else {
-        if (!cw.load_file(dict_file)) {
+        if (!the_wordle->load_file(dict_file)) {
             cout << formatted("Failed to load dictionary file '%s'\n", dict_file);
             return;
         }
     }
-    commands cmds(cw);
+    commands cmds;
     cmds.set_timing(options.count("time") > 0);
     wordle_word::set_verbose(options.count("verbose") > 0);
     while (std::cin.good()) {

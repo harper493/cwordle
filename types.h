@@ -48,6 +48,10 @@ typedef signed int S32;
 typedef signed short S16;
 typedef signed char S8;
 
+class cwordle;
+
+extern cwordle *the_wordle;
+
 #define likely(X) __builtin_expect(!!(X), 1)
 #define unlikely(X) __builtin_expect(!!(X), 0)
 #define _always_inline __attribute__((always_inline))

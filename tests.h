@@ -10,6 +10,7 @@ public:
 private:
     static void test1();
     static void test2();
+    static void test3();
     static string t(const string &w1, const string &w2, const string &correct,
              const vector<string> &good, const vector<string> &bad);
 };
