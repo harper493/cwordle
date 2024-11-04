@@ -38,11 +38,14 @@
  * all_mask: a word mask with bits set at each position for
  * every letter in the word
  *
- * once_mask: as above, but only for letters which appear
- * exactly once
+ * once_mask: as above, but only for the first occurrence of
+ * each letter (so for every occurrence of letters which only
+ * occur once)./
  *
- * twice_mask: as above, but only for letters which appear
- * exactly twice
+ * twice_mask: as above, for letters that occur at least
+ * twice, and only for the first and second
+ * occurrences of each letter (so for every occurrence of
+ * letters that occur exactly twice)
  *
  * many_mask: as above, but only for letters which appear
  * three or more times
@@ -109,11 +112,14 @@ U32 add256_i32(__m256i x)
 }
 
 /************************************************************************
- * set_word - set up a wordle_word for a particular 5-letter word, setting
+ * set_word_basic - set up a wordle_word for a particular 5-letter word, setting
  * up all the fields described in the header comment.
+ *
+ * Works by individually examining each letter, and retaining state for 
+ * where each letter has occurred.
  ***********************************************************************/
 
-void wordle_word::set_word(const string &w)
+void wordle_word::set_word_basic(const string &w)
 {
     letter_mask once;
     letter_mask twice;
@@ -168,7 +174,15 @@ void wordle_word::set_word(const string &w)
 }
 
 /************************************************************************
- * set_word_2 - as above but use AVX instructions
+ * set_word_2 - as above but use the AVX CONFLICT instruction. This 
+ * compares every letter with every other letter, and marks repeats,
+ * identifying what they repeat. So the bit count at each position says
+ * how many times it has occurred previously: 1 for a first repeat,
+ * 2 for a second repeat, and so on.
+ *
+ * Using that information, we can scan the word letter by letter,
+ * using the combination of the repeat count seen here, and the
+ * final repeat count for the letter, to make the appropraite entries.
  ***********************************************************************/
 
 void wordle_word::set_word_2(const string &w)
@@ -216,10 +230,25 @@ void wordle_word::set_word_2(const string &w)
 }
 
 /************************************************************************
- * set_word_3 - as above but use AVX instructions even more
+ * set_word - as above but do everything with AVX instuctions. 
+ * There is no code which looks individually at the letters.
+ *
+ * This is a bit tricky. First we create three masks: onces,
+ * twices, and manys, for where he CONFLICT instruction has told us
+ * about the corresponding number of repeats.
+ *
+ * Then, we create a mask (many_mask / twice_mask) of the 
+ * corresponding letters. We AND this with all letters (exact_mask) to pick out ALL
+ * occurrences ofthe letters, including the first and second (which CONFLICT
+ * doesn't see as repeats).
+ *
+ * That allows us to create many_mask and twice_mask according to
+ * their definition above.
+ *
+ * Performance is about equal to set_word_2, above.
  ***********************************************************************/
 
-void wordle_word::set_word_3(const string &w)
+void wordle_word::set_word(const string &w)
 {
     memcpy(&text, w.data(), w.size());
     exact_mask = word_mask(w);

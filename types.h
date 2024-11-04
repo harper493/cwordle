@@ -13,6 +13,7 @@
 #include <mutex>
 #include <set>
 #include <ranges>
+#include <string_view>
 #include <boost/lexical_cast.hpp>
 #include <boost/range/irange.hpp>
 

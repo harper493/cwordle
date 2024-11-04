@@ -375,6 +375,13 @@ public:
     {
         return word_mask(avx::mask_blend(m.get(), other.masks, masks));
     }
+    
+    /************************************************************************
+     * count_bits - return a word_mask containing at each position, the
+     * number of bits set at that position in the input. Uses the classic
+     * bit-counting algorithm, AVX-ified.
+     ***********************************************************************/
+    
     word_mask count_bits() const
     {
         mask_t zero(avx::zero(mask_t()));
@@ -539,22 +546,22 @@ public:
     wordle_word(const string &w, int method)
     {
         switch (method) {
-        case 0:
         case 1:
-        default:
-            set_word(w);
+            set_word_basic(w);
             break;
         case 2:
             set_word_2(w);
             break;
+        case 0:
         case 3:
-            set_word_3(w);
+        default:
+            set_word(w);
             break;
         }
     }
     void set_word(const string &w);
+    void set_word_basic(const string &w);
     void set_word_2(const string &w);
-    void set_word_3(const string &w);
     bool good() const
     {
         return text[0] != 0;

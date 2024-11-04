@@ -175,6 +175,6 @@ void tests::test3()
                 dict1.insert(w.str(), m);
             }
         }
-        std::cout << tr1.report(dict1.size(), "words", formatted("With set_word #%d: ", m));
+        std::cout << tr1.report(dict1.size()*iterations, "words", formatted("With set_word #%d: ", m));
     }
 }
