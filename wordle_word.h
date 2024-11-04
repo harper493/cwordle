@@ -438,7 +438,6 @@ private:
 class wordle_word
 {
 public:
-    typedef array<char, WORD_LENGTH> text_t;
     class match_result
     {
     private:
@@ -532,12 +531,11 @@ private:
     letter_mask twice_letters;
     letter_mask many_letters;
     letter_mask repeated_letters;
-    text_t text;
+    string text;
     static bool verbose;
 public:
     wordle_word()
     {
-        text.fill(0);
     }
     wordle_word(const string_view &w)
     {
@@ -568,7 +566,7 @@ public:
     }
     string_view str() const
     {
-        return string_view(text.begin(), text.end());
+        return text;
     }
     bool operator<(const wordle_word &other) const
     {

@@ -124,9 +124,9 @@ void wordle_word::set_word_basic(const string_view &w)
     letter_mask once;
     letter_mask twice;
     letter_mask many;
+    text = w;
     for (size_t i : irange(0, WORD_LENGTH)) {
         char ch = w[i];
-        text[i] = ch;
         letter_mask m(ch);
         if (once.contains(m)) {
             once.remove(m);
@@ -187,7 +187,7 @@ void wordle_word::set_word_basic(const string_view &w)
 
 void wordle_word::set_word_2(const string_view &w)
 {
-    memcpy(&text, w.data(), w.size());
+    text = w;
     exact_mask = word_mask(w);
     word_mask conflict(avx::conflict(exact_mask.get()));
     std::map<letter_mask, size_t> seen;
@@ -250,7 +250,7 @@ void wordle_word::set_word_2(const string_view &w)
 
 void wordle_word::set_word(const string_view &w)
 {
-    memcpy(&text, w.data(), w.size());
+    text = w;
     exact_mask = word_mask(w);
     all_letters = exact_mask.all_letters();
     auto zero(avx::zero(word_mask::mask_t()));
