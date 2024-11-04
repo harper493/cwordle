@@ -125,8 +125,7 @@ void wordle_word::set_word_basic(const string_view &w)
     letter_mask twice;
     letter_mask many;
     text = w;
-    for (size_t i : irange(0, WORD_LENGTH)) {
-        char ch = w[i];
+    for (char ch : text) {
         letter_mask m(ch);
         if (once.contains(m)) {
             once.remove(m);
@@ -146,7 +145,7 @@ void wordle_word::set_word_basic(const string_view &w)
     letter_mask seen;
     letter_mask seen2;
     all_mask = set_letters(all_letters); 
-    for (int i : irange(0, WORD_LENGTH)) {
+    for (int i : irange((size_t)0, text.size())) {
         char ch = text[i];
         letter_mask m(ch);
         exact_mask[i] = m;
@@ -191,7 +190,7 @@ void wordle_word::set_word_2(const string_view &w)
     exact_mask = word_mask(w);
     word_mask conflict(avx::conflict(exact_mask.get()));
     std::map<letter_mask, size_t> seen;
-    for (int i : views::iota(0, WORD_LENGTH) | views::reverse) {
+    for (int i : views::iota((size_t)0, text.size()) | views::reverse) {
         letter_mask ch(text[i]);
         letter_mask m = conflict[i];
         size_t sz = m.size();
@@ -284,7 +283,7 @@ void wordle_word::set_word(const string_view &w)
 letter_mask wordle_word::masked_letters(match_mask mask) const
 {
     letter_mask result;
-    for (auto i : irange(0, WORD_LENGTH)) {
+    for (auto i : irange((size_t)0, text.size())) {
         if (mask.get() & (1 << i)) {
             result |= exact_mask[i];
         }
@@ -304,7 +303,7 @@ string wordle_word::groom(const string_view &w)
 {
     string result;
     letter_counter letter_count;
-    if (w.size() == WORD_LENGTH) {
+    if (w.size() == word_length) {
         for (char ch : w) {
             if (isalpha(ch)) {
                 if (isupper(ch)) {
@@ -331,7 +330,7 @@ string wordle_word::groom(const string_view &w)
 styled_text wordle_word::styled_str(const match_result &mr) const
 {
     styled_text result;
-    for (size_t i : irange(0, WORD_LENGTH)) {
+    for (size_t i : irange((size_t)0, text.size())) {
         if (mr.is_exact(i)) {
             result.append(styled_text(string(1, text[i]), matched_color));
         } else if (mr.is_partial(i)) {
@@ -358,7 +357,7 @@ string letter_mask::str() const
 }
 
 /************************************************************************
- * word_mask::str - return a sting representing all the letters at
+ * word_mask::str - return a string representing all the letters at
  * each position in a word mask, separated by '|'. Handy when
  * debugging.
  ***********************************************************************/
@@ -366,14 +365,14 @@ string letter_mask::str() const
 string word_mask::str() const
 {
     string result;
-    for (size_t i : irange(0, WORD_LENGTH)) {
+    for (size_t i : irange(0, word_length)) {
         auto lm = (*this)[i];
         if (lm) {
             result += lm.str();
         } else {
             result += "-";
         }
-        if (i < WORD_LENGTH - 1) {
+        if (i < word_length - 1) {
             result += "|";
         }
     }
@@ -502,8 +501,8 @@ bool wordle_word::match_result::parse(const string &m)
     bool result = true;
     U16 e = 0;
     U16 p = 0;
-    if (m.size()==WORD_LENGTH) {
-        for (size_t i : irange(0, WORD_LENGTH)) {
+    if (m.size()==word_length) {
+        for (size_t i : irange(0, word_length)) {
             if (m[i]=='1') {
                 p |= (1 << i);
             } else if (m[i]=='2') {
@@ -544,7 +543,7 @@ wordle_word::match_target::match_target(const wordle_word &target, const match_r
     letter_counter partial_count;
     letter_counter exact_count;
     letter_counter absent_count;
-    for (size_t i : irange(0, WORD_LENGTH)) {
+    for (size_t i : irange(0, word_length)) {
         U16 b = 1 << i;
         char ch = my_word.text[i];
         if (only_partial & b) {
@@ -565,7 +564,7 @@ wordle_word::match_target::match_target(const wordle_word &target, const match_r
     }
     partial_match_count = partial_count.size();
     letter_mask already_seen;
-    for (size_t i : irange(0, WORD_LENGTH)) {
+    for (size_t i : irange(0, word_length)) {
         char ch = my_word.text[i];
         if (!already_seen.contains(ch)) {
             already_seen |= ch;

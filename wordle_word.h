@@ -87,7 +87,7 @@ public:
     }
     static mask_t all()
     {
-        return (1 << WORD_LENGTH) - 1;
+        return (1 << word_length) - 1;
     }
 
     /************************************************************************
@@ -289,7 +289,7 @@ class word_mask
 {
 public:
     typedef __m256i mask_t;
-    typedef array<letter_mask, WORD_LENGTH> just_letters_t;
+    typedef array<letter_mask, MAX_WORD_LENGTH> just_letters_t;
     typedef just_letters_t::iterator iterator;
     typedef just_letters_t::const_iterator const_iterator;
 private:
@@ -476,7 +476,7 @@ public:
         bool parse(const string &s);
         static U16 good_bits()
         {
-            return (1 << WORD_LENGTH) - 1;
+            return (1 << word_length) - 1;
         }
     friend class wordle_word;
     friend class match_target;
@@ -568,6 +568,10 @@ public:
     {
         return text;
     }
+    size_t size() const
+    {
+        return text.size();
+    }
     bool operator<(const wordle_word &other) const
     {
         return text < other.text;
@@ -595,7 +599,7 @@ public:
     letter_mask get_many_letters() const { return many_letters; };
     static match_mask make_letters_mask()
     {
-        return match_mask((1<<WORD_LENGTH) - 1);
+        return match_mask((1<<word_length) - 1);
     }
     static word_mask set_letters(letter_mask letters)
     {

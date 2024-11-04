@@ -22,12 +22,14 @@ timing_reporter timers::match_timer(true);
 timing_reporter timers::conforms_timer(true);
 
 cwordle *the_wordle;
+int word_length;
 
 bool do_options(int argc, char *argv[])
 {
     od.add_options()
         ("help", "produce help message")
         ("dict,d", po::value<string>()->default_value(""), "dictionary file name")
+        ("length,l", po::value<int>()->default_value(DEFAULT_WORD_LENGTH), "word length")
         ("verbose,V", "show details of comparison operations")
         ("vocab,v", po::value<string>()->default_value(""), "select builtin vocabulary (wordle or other)")
         ("time,t", "show timing information");
@@ -48,6 +50,7 @@ bool do_options(int argc, char *argv[])
 void run()
 {
     the_wordle = new cwordle();
+    word_length = options["length"].as<int>();
     string dict_file = options["dict"].as<string>();
     if (dict_file.empty()) {
         string vocab = options["vocab"].as<string>();

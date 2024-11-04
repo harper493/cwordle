@@ -99,7 +99,7 @@ void word_list::fill() const
 float word_list::entropy(const wordle_word &target) const
 {
     vector<float> counts;
-    counts.resize(1 << (WORD_LENGTH*2));
+    counts.resize(1 << (target.size()*2));
     std::fill(counts.begin(), counts.end(), 0.0);
     for (const auto &idx : *this) {
         timers::match_timer.restart();
