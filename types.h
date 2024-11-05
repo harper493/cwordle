@@ -16,6 +16,7 @@
 #include <string_view>
 #include <boost/lexical_cast.hpp>
 #include <boost/range/irange.hpp>
+#include <boost/algorithm/string.hpp>
 
 using std::vector;
 using std::optional;
@@ -29,6 +30,7 @@ using std::mutex;
 using std::set;
 using boost::irange;
 using boost::lexical_cast;
+namespace algorithm = boost::algorithm;
 
 using std::cout;
 using namespace std::placeholders;
@@ -56,12 +58,18 @@ class commands;
 extern cwordle *the_wordle;
 extern commands *the_commands;
 extern int word_length;
+extern string the_language;
+extern string the_path;
+extern bool sutom_mode;
+extern bool strict_mode;
 
 #define likely(X) __builtin_expect(!!(X), 1)
 #define unlikely(X) __builtin_expect(!!(X), 0)
 #define _always_inline __attribute__((always_inline))
 
 #define DEFAULT_WORD_LENGTH 5
+#define DEFAULT_LANGUAGE "english"
+#define DEFAULT_PATH "languages/"
 #define MAX_WORD_LENGTH 8
 #define ALPHABET_SIZE 26
 

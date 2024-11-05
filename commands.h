@@ -98,6 +98,7 @@ private:
     void check_finished();
     dictionary &get_dict();
     void display_time(timing_reporter &timer, const string &label);
+    void new_word();
 };
 
 #define KEYWORDS(NAME) commands::keyword_table NAME ( vector<commands::keyword> {

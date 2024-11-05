@@ -50,7 +50,7 @@ auto output_color = styled_text::green;
 
 commands::commands()
 {
-    the_wordle->new_word();
+    new_word();
 }
 
 /************************************************************************
@@ -183,7 +183,7 @@ void commands::do_help()
 void commands::do_new()
 {
     check_finished();
-    the_wordle->new_word();
+    new_word();
 }
 
 /************************************************************************
@@ -363,6 +363,20 @@ optional<int> commands::next_arg_int(bool end_ok)
         }
     }
     return result;
+}
+
+/************************************************************************
+ * new_word - pick a new word and if in <sutom mode, display the 
+ * first character
+ ***********************************************************************/
+
+void commands::new_word()
+{
+    the_wordle->new_word();
+    if (sutom_mode) {
+        cout << styled_text(string(the_wordle->get_current_word().str().substr(0, 1)), styled_text::green)
+             << styled_text(string(word_length-1, '-'), styled_text::black) << '\n';
+    }
 }
 
 /************************************************************************

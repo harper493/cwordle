@@ -21,16 +21,23 @@ timing_reporter timers::entropy_timer(true);
 timing_reporter timers::match_timer(true);
 timing_reporter timers::conforms_timer(true);
 
-cwordle *the_wordle;
-int word_length;
-commands * the_commands;
+cwordle *the_wordle = NULL;
+int word_length = DEFAULT_WORD_LENGTH;
+commands *the_commands = NULL;
+string the_language;
+string the_path;
+bool strict_mode = false;
+bool sutom_mode = false;
 
 bool do_options(int argc, char *argv[])
 {
     od.add_options()
         ("help", "produce help message")
         ("dict,d", po::value<string>()->default_value(""), "dictionary file name")
+        ("language,L", po::value<string>()->default_value(""), "language")
         ("length,l", po::value<int>()->default_value(DEFAULT_WORD_LENGTH), "word length")
+        ("path,p", po::value<string>()->default_value(DEFAULT_PATH), "path top language dictionaries")
+        ("sutom,S", "play using Sutom rules")
         ("verbose,V", "show details of comparison operations")
         ("vocab,v", po::value<string>()->default_value(""), "select builtin vocabulary (wordle or other)")
         ("time,t", "show timing information");
@@ -53,7 +60,15 @@ void run()
     the_wordle = new cwordle();
     word_length = options["length"].as<int>();
     string dict_file = options["dict"].as<string>();
-    if (dict_file.empty()) {
+    the_path = options["path"].as<string>();
+    if (!algorithm::ends_with(the_path, "/")) {
+        the_path += '/';
+    }
+    the_language = algorithm::to_lower_copy(options["language"].as<string>());
+    sutom_mode = options.count("sutom") > 0;
+    strict_mode = sutom_mode;
+    if (dict_file.empty() && the_language.empty()) {
+        the_language = DEFAULT_LANGUAGE;
         string vocab = options["vocab"].as<string>();
         if (vocab.empty()) {
             vocab = "other";
@@ -67,7 +82,13 @@ void run()
             return;
         }
     } else {
-        if (!the_wordle->load_file(dict_file)) {
+        if (dict_file.empty()) {
+            dict_file = the_path + the_language + "/words.txt";
+        }
+        if (the_wordle->load_file(dict_file)) {
+            cout << formatted("Loaded %d words from dictionary '%s'\n",
+                              the_wordle->get_dictionary().size(), dict_file);
+        } else {
             cout << formatted("Failed to load dictionary file '%s'\n", dict_file);
             return;
         }
