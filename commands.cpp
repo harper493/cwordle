@@ -149,15 +149,7 @@ void commands::do_explain()
 {
     wordle_word w(next_arg());
     check_finished();
-    cout << formatted("%20s: %s\n", "exact_mask", w.get_exact_mask().str());
-    cout << formatted("%20s: %s\n", "all_mask", w.get_all_mask().str());
-    cout << formatted("%20s: %s\n", "once_mask", w.get_once_mask().str());
-    cout << formatted("%20s: %s\n", "twice_mask", w.get_twice_mask().str());
-    cout << formatted("%20s: %s\n", "many_mask", w.get_many_mask().str());
-    cout << formatted("%20s: %s\n", "all_letters", w.get_all_letters().str());
-    cout << formatted("%20s: %s\n", "once_letters", w.get_once_letters().str());
-    cout << formatted("%20s: %s\n", "twice_letters", w.get_twice_letters().str());
-    cout << formatted("%20s: %s\n", "many_letters", w.get_many_letters().str());
+    cout << w.explain();
 }
 
 /************************************************************************

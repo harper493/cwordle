@@ -5,6 +5,7 @@
 #include "timing_reporter.h"
 #include "dictionary.h"
 #include "entropy.h"
+#include "commands.h"
 #include "cwordle.h"
 
 void tests::do_test(int t)
@@ -18,6 +19,9 @@ void tests::do_test(int t)
         break;
     case 3:
         test3();
+        break;
+    case 4:
+        test4();
         break;
     default:
         break;
@@ -176,5 +180,19 @@ void tests::test3()
             }
         }
         std::cout << tr1.report(dict1.size()*iterations, "words", formatted("With set_word #%d: ", m));
+    }
+}
+
+/************************************************************************
+ * 'explain' the result of each of the three methods of creating a word
+ ***********************************************************************/
+
+void tests::test4()
+{
+    string w(the_commands->next_arg());
+    for (auto m : irange(1, 4)) {
+        cout << formatted("For method %d:\n", m);
+        wordle_word ww(w, m);
+        cout << ww.explain();
     }
 }

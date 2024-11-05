@@ -262,7 +262,7 @@ void wordle_word::set_word(const string_view &w)
     many_letters = exact_mask.select(manys).all_letters();
     auto many_select(set_letters(many_letters));
     auto many2 = (exact_mask & many_select).to_mask();
-    many_mask = many_select.select(many2);
+    many_mask = exact_mask.select(many2);
     auto twices = avx::cmpeq_mask(conflict.as_mask(), ones);
     twice_letters = exact_mask.select(twices).all_letters() & ~many_letters;
     auto twice1 = exact_mask.select(twices & ~manys);
@@ -339,6 +339,25 @@ styled_text wordle_word::styled_str(const match_result &mr) const
             result.append(styled_text(string(1, text[i]), unmatched_color));
         }
     }
+    return result;
+}
+
+/************************************************************************
+ * explain - produce a multi-line string showing all the various masks etc
+ ***********************************************************************/
+
+string wordle_word::explain() const
+{
+    string result;
+    result += formatted("%20s: %s\n", "exact_mask", get_exact_mask().str());
+    result += formatted("%20s: %s\n", "all_mask", get_all_mask().str());
+    result += formatted("%20s: %s\n", "once_mask", get_once_mask().str());
+    result += formatted("%20s: %s\n", "twice_mask", get_twice_mask().str());
+    result += formatted("%20s: %s\n", "many_mask", get_many_mask().str());
+    result += formatted("%20s: %s\n", "all_letters", get_all_letters().str());
+    result += formatted("%20s: %s\n", "once_letters", get_once_letters().str());
+    result += formatted("%20s: %s\n", "twice_letters", get_twice_letters().str());
+    result += formatted("%20s: %s\n", "many_letters", get_many_letters().str());
     return result;
 }
 

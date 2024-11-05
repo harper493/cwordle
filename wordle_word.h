@@ -568,6 +568,7 @@ public:
     {
         return text;
     }
+    string explain() const;
     size_t size() const
     {
         return text.size();

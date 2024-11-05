@@ -51,8 +51,10 @@ typedef signed short S16;
 typedef signed char S8;
 
 class cwordle;
+class commands;
 
 extern cwordle *the_wordle;
+extern commands *the_commands;
 extern int word_length;
 
 #define likely(X) __builtin_expect(!!(X), 1)

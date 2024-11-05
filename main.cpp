@@ -23,6 +23,7 @@ timing_reporter timers::conforms_timer(true);
 
 cwordle *the_wordle;
 int word_length;
+commands * the_commands;
 
 bool do_options(int argc, char *argv[])
 {
@@ -72,6 +73,7 @@ void run()
         }
     }
     commands cmds;
+    the_commands = &cmds;
     cmds.set_timing(options.count("time") > 0);
     wordle_word::set_verbose(options.count("verbose") > 0);
     while (std::cin.good()) {
