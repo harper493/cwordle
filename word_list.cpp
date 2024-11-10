@@ -126,12 +126,15 @@ float word_list::entropy(const wordle_word &target) const
     vector<float> counts;
     counts.resize(1 << (target.size()*2));
     std::fill(counts.begin(), counts.end(), 0.0);
+    timers::match_timer.restart();
+    int count = 0;
     for (const auto &idx : *this) {
-        timers::match_timer.restart();
         auto mr = target.match(my_dict[idx]);
-        timers::match_timer.pause();
         counts[mr.get_hash()] += 1;
+        ++count;
     }
+    timers::match_timer.pause();
+    timers::match_timer.adjust_count(count ? count-1 : 0);
     timers::entropy_timer.restart();
     float result = ::entropy(counts);
     timers::entropy_timer.pause();

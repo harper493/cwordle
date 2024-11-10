@@ -40,6 +40,10 @@ public:
         total_duration = 0;
         start_count = 0;
     }
+    void adjust_count(int c)
+    {
+        start_count += c;
+    }
     timing_reporter operator+=(const timing_reporter &other)
     {
         total_duration += other.total_duration;
