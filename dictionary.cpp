@@ -25,6 +25,28 @@ bool dictionary::load_file(const string &filename)
 }
 
 /************************************************************************
+ * load - load whitespace separated words from a string
+ ***********************************************************************/
+
+void dictionary::load(const string_view &s)
+{
+    auto b = s.begin();
+    auto e = s.end();
+    while (b != e) {
+        while (!isalpha(*b) && b != e) {
+            ++b;
+        }
+        auto bb = b;
+        while (isalpha(*b) && b != e) {
+            ++b;
+        }
+        if (b != e) {
+            insert(string_view(bb, b));
+        }
+    }
+}
+
+/************************************************************************
  * insert - insert a word. Return false if the word is badly formed or
  * if it already present.
  ***********************************************************************/

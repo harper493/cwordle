@@ -64,7 +64,7 @@ private:
     static string escape_ch;
 public:
     styled_text() { };
-    styled_text(const string &t, color_e c=color_none, color_e bg=color_none, style_e s=style_none, size_t sz=0);
+    styled_text(const string_view &t, color_e c=color_none, color_e bg=color_none, style_e s=style_none, size_t sz=0);
     styled_text(const styled_text &st);
     template<class ITER>
     styled_text(ITER begin, ITER end)
@@ -81,13 +81,13 @@ public:
         }
     }
     bool empty() const { return text.empty() && subtexts.empty(); };
-    styled_text &append(const string &t);
-    styled_text &operator+=(const string &t)
+    styled_text &append(const string_view &t);
+    styled_text &operator+=(const string_view &t)
     {
         return append(t);
     }
     styled_text &append(const styled_text &st);
-    styled_text &append(const string &t, color_e c, color_e bg=color_none, style_e s=style_none, size_t sz=0)
+    styled_text &append(const string_view &t, color_e c, color_e bg=color_none, style_e s=style_none, size_t sz=0)
     {
         return append(styled_text(t, c, bg, s, sz));
     }

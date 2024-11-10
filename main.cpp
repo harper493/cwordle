@@ -14,8 +14,8 @@ namespace po = boost::program_options;
 po::options_description od("Available options");
 po::variables_map options;
 
-extern vector<string> wordle_words;
-extern vector<string> other_words;
+extern string wordle_words;
+extern string other_words;
 
 timing_reporter timers::entropy_timer(true);
 timing_reporter timers::match_timer(true);
@@ -37,6 +37,7 @@ bool do_options(int argc, char *argv[])
         ("language,L", po::value<string>()->default_value(""), "language")
         ("length,l", po::value<int>()->default_value(DEFAULT_WORD_LENGTH), "word length")
         ("path,p", po::value<string>()->default_value(DEFAULT_PATH), "path top language dictionaries")
+        ("strict", "use strict mode")
         ("sutom,S", "play using Sutom rules")
         ("verbose,V", "show details of comparison operations")
         ("vocab,v", po::value<string>()->default_value(""), "select builtin vocabulary (wordle or other)")
@@ -66,12 +67,12 @@ void run()
     }
     the_language = algorithm::to_lower_copy(options["language"].as<string>());
     sutom_mode = options.count("sutom") > 0;
-    strict_mode = sutom_mode;
+    strict_mode = sutom_mode || options.count("strict") > 0;
     if (dict_file.empty() && the_language.empty()) {
         the_language = DEFAULT_LANGUAGE;
         string vocab = options["vocab"].as<string>();
         if (vocab.empty()) {
-            vocab = "other";
+            vocab = "wordle";
         }
         if (vocab=="other") {
             the_wordle->load_words(other_words);

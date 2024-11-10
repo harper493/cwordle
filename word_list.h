@@ -25,6 +25,7 @@ public:
     const_iterator end() const { fill(); return my_words.end(); }
     dictionary::word_index_t operator[](size_t idx) const { fill(); return my_words[idx]; }
     word_list filter(const wordle_word::match_target &mt) const;
+    word_list filter_exact(const wordle_word::match_target &mt) const;
     word_list sorted() const;
     float entropy(const wordle_word &w) const;
 private:

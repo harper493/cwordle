@@ -45,7 +45,7 @@ styled_text::render_e styled_text::renderer = plain;
  * Constructors
  ***********************************************************************/
 
-styled_text::styled_text(const string &t, color_e c, color_e bg, style_e s, size_t sz)
+styled_text::styled_text(const string_view &t, color_e c, color_e bg, style_e s, size_t sz)
     : text(t), color(c), background(bg), style(s), size(sz)
 {
 }
@@ -58,7 +58,7 @@ styled_text::styled_text(const styled_text &st)
     }
 }
 
-styled_text &styled_text::append(const string &t)
+styled_text &styled_text::append(const string_view &t)
 {
     if (subtexts.empty()) {
         text += t;

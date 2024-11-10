@@ -21,6 +21,11 @@ void cwordle::load_words(const vector<string> &w)
     my_dict.load(w);
 }
 
+void cwordle::load_words(const string_view &s)
+{
+    my_dict.load(s);
+}
+
 /************************************************************************
  * load_file - the the dictionary from a file. Return false if
  * there is a problem with the file.
@@ -40,8 +45,11 @@ cwordle::result_list_t cwordle::best(size_t how_many)
 {
     result_list_t result(how_many);
     const word_list &wl = word_lists.empty() ? all_my_words : word_lists.back();
+    auto &wl2 = strict_mode && !the_wordle->empty()
+        ? wl.filter_exact(the_wordle->get_last_result())
+        : wl;
     for (const auto &w : my_dict.get_words()) {
-        float e = wl.entropy(w);
+        float e = wl2.entropy(w);
         result.insert(&w, e);
     }
     return result;
@@ -159,4 +167,14 @@ bool cwordle::add_word(const string &w)
         my_dict.insert(groomed);
         return true;
     }
+}
+
+/************************************************************************
+ * test_exact - return true iff the given word is an exact match for
+ * the latest try
+ ***********************************************************************/
+
+bool cwordle::test_exact(const string_view &w)
+{
+    return empty() || results.back().conforms_exact(w);
 }

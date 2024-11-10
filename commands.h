@@ -92,7 +92,7 @@ public:
     string next_arg(bool end_ok=false);
     optional<int> next_arg_int(bool end_ok=false);
 private:
-    wordle_word validate_word(const string &w);
+    const wordle_word *validate_word(const string &w);
     void show_error(const string &err);
     void check_started() const;
     void check_finished();

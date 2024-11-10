@@ -32,6 +32,24 @@ namespace avx
     {
         _mm256_storeu_si256(&dst, value);
     }
+#ifndef AVX512
+    inline U16 to_mask(__m256i src)
+    {
+        U16 result = 0;
+        U16 m = 1;
+#define _ONE_WORD(B) if (_mm256_extract_epi32(src, B)) result |= (1<<B);
+        _ONE_WORD(0);
+        _ONE_WORD(1);
+        _ONE_WORD(2);
+        _ONE_WORD(3);
+        _ONE_WORD(4);
+        _ONE_WORD(5);
+        _ONE_WORD(6);
+        _ONE_WORD(7);
+#undef _ONE_WORD
+        return result;
+    }
+#endif
     inline void mask_storeu(__m256i &dst, __mmask8 mask, __m256i value)
     {
         _mm256_mask_storeu_epi32(&dst, mask, value);
@@ -46,13 +64,36 @@ namespace avx
         _mm256_insert_epi32(dst, value, index);
     }
     #endif
+    inline __m256i mask_blend(U16 mask, __m256i x, __m256i y)
+    {
+#ifdef AVX512
+        return _mm256_mask_blend_epi32(mask, x, y);
+#else
+        __m256i result = x;
+#define _ONE_WORD(B) if (mask & (1<<B)) result = _mm256_blend_epi32(result, y, 1<<B)
+        _ONE_WORD(0);
+        _ONE_WORD(1);
+        _ONE_WORD(2);
+        _ONE_WORD(3);
+        _ONE_WORD(4);
+        _ONE_WORD(5);
+        _ONE_WORD(6);
+        _ONE_WORD(7);
+#undef _ONE_WORD
+        return result;
+#endif
+    }
     inline bool is_zero(__m256i p)
     {
         return _mm256_testz_si256(p, p);
     }
     inline bool equal(__m256i p, __m256i q)
     {
+#ifdef AVX512
         return _mm256_cmpneq_epi32_mask(p, q)==0;
+#else
+        return to_mask(_mm256_cmpeq_epi32(p, q))==0xff;
+#endif
     }
     inline __m256i add(__m256i p, __m256i q)
     {
@@ -80,12 +121,16 @@ namespace avx
     }
     inline __m256i conflict(__m256i src)
     {
+#ifdef AVX512
         return _mm256_conflict_epi32(src);
+#else
+        return __m256i();
+#endif
     }
     inline __m256i set1_masked(__m256i, U32 x, __mmask8 mask)
     {
         __m256i r1 = _mm256_set1_epi32(x);
-        __m256i r2 = _mm256_mask_blend_epi32(mask, zero(__m256i()), r1);
+        __m256i r2 = mask_blend(mask, zero(__m256i()), r1);
         return r2;
     }
     inline __m256i cmpeq(__m256i x, __m256i y)
@@ -106,7 +151,11 @@ namespace avx
     }
     inline __mmask8 cmpeq_mask(__m256i x, __m256i y)
     {
+#ifdef AVX512
         return _mm256_cmpeq_epu32_mask(x, y);
+#else
+        return to_mask(_mm256_cmpeq_epi32(x, y));
+#endif
     }
     inline __mmask8 cmpne_mask(__m256i x, __m256i y)
     {
@@ -114,19 +163,23 @@ namespace avx
     }
     inline __mmask8 cmpgt_mask(__m256i x, __m256i y)
     {
+#ifdef AVX512
         return _mm256_cmpgt_epu32_mask(x, y);
+#else
+        return to_mask(_mm256_cmpgt_epi32(x, y));
+#endif
     }
     inline __mmask8 cmplt_mask(__m256i x, __m256i y)
     {
+#ifdef AVX512
         return _mm256_cmplt_epu32_mask(x, y);
-    }
-    inline __m256i mask_blend(U16 mask, __m256i x, __m256i y)
-    {
-        return _mm256_mask_blend_epi32(mask, x, y);
+#else
+        return to_mask(_mm256_cmpgt_epi32(y, x));
+#endif
     }
     inline U32 or_i32(__m256i x)
     {
-#if 0
+#ifndef AVX512
         __m256i x0 = _mm256_permute2x128_si256(x,x,1);
         __m256i x1 = _mm256_or_si256(x,x0);
         __m256i x2 = _mm256_shuffle_epi32(x1,0b01001110);
@@ -140,7 +193,7 @@ namespace avx
     }
     inline U32 add_i32(__m256i x)
     {
-#if 0
+#ifndef AVX512
         __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(x),
                                        _mm256_extracti128_si256(x, 1));
         __m128i hi64  = _mm_unpackhi_epi64(sum128, sum128);
@@ -155,7 +208,7 @@ namespace avx
     /************************************************************************
      * 512 bit functions
      ***********************************************************************/
-    
+#ifdef AVX12
     inline __m512i zero(__m512i)
     {
         return _mm512_setzero_si512();
@@ -234,6 +287,7 @@ namespace avx
         __m256i sum256 = _mm256_add_epi32(x0, x1);
         return add_i32(sum256);
     }
+#endif
 #endif
 };
 

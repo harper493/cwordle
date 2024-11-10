@@ -116,7 +116,8 @@ private:
     U32 mask = 0;
 public:
     letter_mask() { };
-    explicit letter_mask(char ch) : mask(1 << (ch - 'a')) { };
+    explicit letter_mask(char ch)
+        : mask(ch=='-' ? 0 : 1 << (ch - 'a')) { };
     letter_mask(U32 m) : mask(m) { };
     explicit operator bool() const
     {
@@ -400,6 +401,7 @@ public:
     U32 count_letter(letter_mask m) const;
     match_mask match_letter(char letter) const;
     match_mask match_letter(letter_mask m) const;
+    bool match_text(const word_mask &other) const;
     letter_mask all_letters() const
     {
         return letter_mask(avx::or_i32(masks));
@@ -407,7 +409,11 @@ public:
     match_mask to_mask() 
     {
         mask_t zeros = _mm256_setzero_si256();
-        return _mm256_cmpgt_epu32_mask(masks, zeros);
+        return avx::cmpgt_mask(masks, zeros);
+    }
+    size_t count_matches()
+    {
+        return __builtin_popcount(to_mask().get());
     }
     letter_counter count_letters() const;
     string str() const;
@@ -515,6 +521,11 @@ public:
     public:
         match_target(const wordle_word &target, const match_result &mr);
         bool conforms(const wordle_word &other) const;
+        bool conforms_exact(const string_view &w) const;
+        const match_result &get_result() const
+        {
+            return my_mr;
+        }
         styled_text show() const
         {
             return my_word.styled_str(my_mr);
@@ -589,6 +600,10 @@ public:
     styled_text styled_str(const match_result &mr) const;
     match_result match(const wordle_word &target) const;
     letter_mask masked_letters(match_mask mask) const;
+    bool match_text(const word_mask &other) const
+    {
+        return exact_mask.match_text(other);
+    }
     word_mask get_exact_mask() const { return exact_mask; };
     word_mask get_all_mask() const { return all_mask; };
     word_mask get_once_mask() const { return once_mask; };
@@ -613,13 +628,15 @@ private:
     static __mmask8 to_mask(__m256i matched)
     {
         __m256i zeros = _mm256_setzero_si256();
-        return _mm256_cmpgt_epu32_mask(matched, zeros);
+        return avx::cmpgt_mask(matched, zeros);
     }
+#ifdef AVX512
     static __mmask16 to_mask(__m512i matched)
     {
         __m512i zeros = _mm512_setzero_si512();
-        return _mm512_cmpgt_epu32_mask(matched, zeros);
+        return avx::cmpgt_mask(matched, zeros);
     }
+#endif
     static size_t count_matches(__m256i matched)
     {
         return __builtin_popcount(to_mask(matched));

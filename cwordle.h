@@ -22,14 +22,23 @@ public:
     cwordle()
         : all_my_words(my_dict) { };
     void load_words(const vector<string> &w);
+    void load_words(const string_view &s);
     bool load_file(const string &filename);
     size_t size() const
     {
         return results.size();
     }
+    bool empty() const
+    {
+        return results.empty();
+    }
     dictionary &get_dictionary()
     {
         return my_dict;
+    }
+    const wordle_word::match_target &get_last_result() const
+    {
+        return results.back();
     }
     cwordle::result_list_t best(size_t how_many);
     float entropy(const wordle_word &w);
@@ -44,6 +53,7 @@ public:
     wordle_word::match_result try_word(const wordle_word &w);
     void undo();
     bool add_word(const string &w);
+    bool test_exact(const string_view &w);
     const wordle_word &get_current_word() const;
 };
 

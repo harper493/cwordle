@@ -44,6 +44,7 @@ public:
             insert(w);
         }
     }
+    void load(const string_view &s);
     bool load_file(const string &filename);
     const_iterator begin() const
     {

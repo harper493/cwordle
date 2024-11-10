@@ -125,7 +125,7 @@ void commands::do_best()
 
 void commands::do_entropy()
 {
-    const wordle_word &w = validate_word(next_arg());
+    const wordle_word &w = *validate_word(next_arg());
     check_finished();
     float entropy = the_wordle->entropy(w);
     cout << styled_text(formatted("Entropy of '%s' is %.3f", w.str(), entropy), output_color)
@@ -239,13 +239,13 @@ void commands::do_remaining()
 
 void commands::do_result()
 {
-    wordle_word word = validate_word(next_arg());
+    const wordle_word *word = validate_word(next_arg());
     wordle_word::match_result mr;
     if (!mr.parse(next_arg())) {
         throw syntax_exception("match string must contain only 0 for miss, 1 for partial match, 2 for exact match");
     }
     check_finished();
-    the_wordle->set_result(word, mr);
+    the_wordle->set_result(*word, mr);
 }
 
 /************************************************************************
@@ -268,7 +268,7 @@ void commands::do_set()
 {
     string w = next_arg();
     check_finished();
-    the_wordle->set_word(validate_word(w).str());
+    the_wordle->set_word(validate_word(w)->str());
 }
 
 /************************************************************************
@@ -286,8 +286,11 @@ void commands::do_test()
 
 void commands::do_try()
 {
-    const wordle_word &ww = validate_word(next_arg());
+    const wordle_word &ww = *validate_word(next_arg());
     check_finished();
+    if (strict_mode && !the_wordle->test_exact(ww.str())) {
+        throw syntax_exception("'%s' does not match the most recent try", ww.str());
+    }
     auto mr = the_wordle->try_word(ww);
     if (the_wordle->remaining().size()==1 && ww==the_wordle->get_current_word()) {
         cout << styled_text(formatted("Success! The word is '%s'", the_wordle->get_current_word().str()),
@@ -385,7 +388,7 @@ void commands::new_word()
  * the word in its canonical form as returned by groom().
  ***********************************************************************/
 
-wordle_word commands::validate_word(const string &w)
+const wordle_word *commands::validate_word(const string &w)
 {
     string groomed = wordle_word::groom(w);
     if (groomed.empty()) {
@@ -393,9 +396,9 @@ wordle_word commands::validate_word(const string &w)
     }
     auto ww = get_dict().find_word(groomed);
     if (!ww) {
-        // throw syntax_exception("'%s' is not in the dictionary", groomed);
+        throw syntax_exception("'%s' is not in the dictionary", groomed);
     }
-    return wordle_word(groomed);
+    return ww.value();
 }
 
 /************************************************************************

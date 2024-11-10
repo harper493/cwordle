@@ -40,6 +40,7 @@ float add_horizontal(__m256 values)
 
 float entropy(const vector<float> &data)
 {
+#ifdef AVX512
     __m256 ent256 = _mm256_setzero_ps();
     __m256 sum256 = _mm256_setzero_ps();
     __m512 zeros = _mm512_setzero_ps();
@@ -63,7 +64,9 @@ float entropy(const vector<float> &data)
         result = 0.0;
     }
     return result;
-    
+#else
+    return entropy_slow(data);
+#endif
 }
 
 /************************************************************************
