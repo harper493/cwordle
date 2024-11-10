@@ -45,12 +45,12 @@ cwordle::result_list_t cwordle::best(size_t how_many)
 {
     result_list_t result(how_many);
     const word_list &wl = word_lists.empty() ? all_my_words : word_lists.back();
-    auto &wl2 = strict_mode && !the_wordle->empty()
-        ? wl.filter_exact(the_wordle->get_last_result())
-        : wl;
+    auto *r = strict_mode && !the_wordle->empty() ? &the_wordle->get_last_result() : NULL;
     for (const auto &w : my_dict.get_words()) {
-        float e = wl2.entropy(w);
-        result.insert(&w, e);
+        if (r==NULL || r->conforms_exact(w.str())) {
+            float e = wl.entropy(w);
+            result.insert(&w, e);
+        }
     }
     return result;
 }
