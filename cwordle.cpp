@@ -16,14 +16,14 @@
  * load_words - load the default dictionary
  ***********************************************************************/
 
-void cwordle::load_words(const vector<string> &w)
-{
-    my_dict.load(w);
-}
-
 void cwordle::load_words(const string_view &s)
 {
     my_dict.load(s);
+}
+
+void cwordle::load_words_allowed(const string_view &s)
+{
+    my_dict.load_allowed(s);
 }
 
 /************************************************************************
@@ -34,6 +34,11 @@ void cwordle::load_words(const string_view &s)
 bool cwordle::load_file(const string &filename)
 {
     return my_dict.load_file(filename);
+}
+
+bool cwordle::load_file_allowed(const string &filename)
+{
+    return my_dict.load_file_allowed(filename);
 }
 
 /************************************************************************
@@ -77,7 +82,7 @@ float cwordle::entropy(const wordle_word &w)
     
 void cwordle::new_word()
 {
-    set_word(my_dict.get_random());
+    set_word(my_dict.get_allowed());
 }
 
 /************************************************************************

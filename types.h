@@ -72,6 +72,7 @@ extern bool strict_mode;
 #define DEFAULT_PATH "languages/"
 #define MAX_WORD_LENGTH 8
 #define ALPHABET_SIZE 26
+#define AVX512
 
 template<typename T>
 concept IntegralType = requires(T param)

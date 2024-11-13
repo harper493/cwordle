@@ -24,6 +24,8 @@ public:
     void load_words(const vector<string> &w);
     void load_words(const string_view &s);
     bool load_file(const string &filename);
+    void load_words_allowed(const string_view &s);
+    bool load_file_allowed(const string &filename);
     size_t size() const
     {
         return results.size();

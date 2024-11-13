@@ -208,7 +208,7 @@ namespace avx
     /************************************************************************
      * 512 bit functions
      ***********************************************************************/
-#ifdef AVX12
+#ifdef AVX512
     inline __m512i zero(__m512i)
     {
         return _mm512_setzero_si512();
@@ -265,9 +265,21 @@ namespace avx
         __m512i r2 = _mm512_mask_blend_epi32(mask, zero(__m512i()), r1);
         return r2;
     }
-    inline __mmask16 cmpgt(__m512i x, __m512i y)
+    inline __mmask16 cmpeq_mask(__m512i x, __m512i y)
+    {
+        return _mm512_cmpeq_epu32_mask(x, y);
+    }
+    inline __mmask16 cmpne_mask(__m512i x, __m512i y)
+    {
+        return _mm512_cmpneq_epu32_mask(x, y);
+    }
+    inline __mmask16 cmpgt_mask(__m512i x, __m512i y)
     {
         return _mm512_cmpgt_epu32_mask(x, y);
+    }
+    inline __mmask16 cmplt_mask(__m512i x, __m512i y)
+    {
+        return _mm512_cmplt_epu32_mask(x, y);
     }
     inline __m512i mask_blend(U16 mask, __m512i x, __m512i y)
     {

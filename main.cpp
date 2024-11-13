@@ -15,6 +15,7 @@ po::options_description od("Available options");
 po::variables_map options;
 
 extern string wordle_words;
+extern string allowed_words;
 extern string other_words;
 
 timing_reporter timers::entropy_timer(true);
@@ -32,11 +33,12 @@ bool sutom_mode = false;
 bool do_options(int argc, char *argv[])
 {
     od.add_options()
-        ("help", "produce help message")
+        ("help,h", "produce help message")
+        ("allowed,a", po::value<string>()->default_value(""), "allowed words file name")
         ("dict,d", po::value<string>()->default_value(""), "dictionary file name")
         ("language,L", po::value<string>()->default_value(""), "language")
         ("length,l", po::value<int>()->default_value(DEFAULT_WORD_LENGTH), "word length")
-        ("path,p", po::value<string>()->default_value(DEFAULT_PATH), "path top language dictionaries")
+        ("path,p", po::value<string>()->default_value(DEFAULT_PATH), "path to language dictionaries")
         ("strict", "use strict mode")
         ("sutom,S", "play using Sutom rules")
         ("verbose,V", "show details of comparison operations")
@@ -56,18 +58,13 @@ bool do_options(int argc, char *argv[])
     return true;
 }
 
-void run()
+bool load_dict()
 {
-    the_wordle = new cwordle();
-    word_length = options["length"].as<int>();
     string dict_file = options["dict"].as<string>();
     the_path = options["path"].as<string>();
     if (!algorithm::ends_with(the_path, "/")) {
         the_path += '/';
     }
-    the_language = algorithm::to_lower_copy(options["language"].as<string>());
-    sutom_mode = options.count("sutom") > 0;
-    strict_mode = sutom_mode || options.count("strict") > 0;
     if (dict_file.empty() && the_language.empty()) {
         the_language = DEFAULT_LANGUAGE;
         string vocab = options["vocab"].as<string>();
@@ -78,21 +75,50 @@ void run()
             the_wordle->load_words(other_words);
         } else if (vocab=="wordle") {
             the_wordle->load_words(wordle_words);
+            the_wordle->load_words_allowed(allowed_words);
         } else {
             cout << formatted("Unknown vocabulary '%s'\n", vocab);
-            return;
+            return false;
         }
     } else {
+        string dict_path = the_path + the_language;
         if (dict_file.empty()) {
-            dict_file = the_path + the_language + "/words.txt";
+            dict_file = dict_path + "/words.txt";
+        } else if (dict_file.find('/')==string::npos) {
+            dict_file = dict_path + "/" + dict_file;
         }
         if (the_wordle->load_file(dict_file)) {
             cout << formatted("Loaded %d words from dictionary '%s'\n",
                               the_wordle->get_dictionary().size(), dict_file);
         } else {
             cout << formatted("Failed to load dictionary file '%s'\n", dict_file);
-            return;
+            return false;
         }
+        string allowed_file = options["allowed"].as<string>();
+        if (allowed_file.empty()) {
+            allowed_file = "allowed.txt";
+        }
+        string allowed_path = allowed_file;
+        if (allowed_file.find('/')==string::npos) {
+            allowed_path = dict_path + "/" + allowed_file;
+        }
+        if (the_wordle->load_file_allowed(allowed_path)) {
+            cout << formatted("Loaded %d allowed words from file '%s'\n",
+                              the_wordle->get_dictionary().allowed_size(), allowed_path);
+        }
+    }
+    return true;
+}
+
+int run()
+{
+    the_wordle = new cwordle();
+    word_length = options["length"].as<int>();
+    the_language = algorithm::to_lower_copy(options["language"].as<string>());
+    sutom_mode = options.count("sutom") > 0;
+    strict_mode = sutom_mode || options.count("strict") > 0;
+    if (!load_dict()) {
+        return 1;
     }
     commands cmds;
     the_commands = &cmds;
@@ -106,6 +132,7 @@ void run()
             break;
         }
     }
+    return 0;
 }
 
 int main(int argc, char *argv[])
@@ -114,7 +141,6 @@ int main(int argc, char *argv[])
         return 1;
     }
     styled_text::set_renderer(styled_text::iso6429);
-    run();
-    return 0;
+    return run();
 }
 

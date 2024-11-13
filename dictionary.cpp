@@ -7,7 +7,7 @@
  * a problem.
  ***********************************************************************/
 
-bool dictionary::load_file(const string &filename)
+bool dictionary::load_file_base(const string &filename, std::function<bool(const string_view&)> inserter)
 {
     bool result = false;
     std::ifstream istr(filename);
@@ -17,7 +17,7 @@ bool dictionary::load_file(const string &filename)
         while (istr.good()) {
             getline(istr, line);
             if (!line.empty()) {
-                insert(line);
+                inserter(line);
             }
         }
     }
@@ -28,7 +28,7 @@ bool dictionary::load_file(const string &filename)
  * load - load whitespace separated words from a string
  ***********************************************************************/
 
-void dictionary::load(const string_view &s)
+void dictionary::load_base(const string_view &s, std::function<bool(const string_view&)> inserter)
 {
     auto b = s.begin();
     auto e = s.end();
@@ -41,7 +41,7 @@ void dictionary::load(const string_view &s)
             ++b;
         }
         if (b != e) {
-            insert(string_view(bb, b));
+            inserter(string_view(bb, b));
         }
     }
 }
@@ -51,7 +51,7 @@ void dictionary::load(const string_view &s)
  * if it already present.
  ***********************************************************************/
 
-bool dictionary::insert(const string_view &w, int method/*=0*/)
+bool dictionary::insert(const string_view &w, int method)
 {
     bool result = false;
     string groomed = wordle_word::groom(w);
@@ -64,6 +64,21 @@ bool dictionary::insert(const string_view &w, int method/*=0*/)
         }
     }
     return result;
+}
+
+/************************************************************************
+ * insert_allowed - insert a word which is an allowed starting word
+ ***********************************************************************/
+
+bool dictionary::insert_allowed(const string_view &w)
+{
+    auto i = find(w);
+    if (!i) {
+        insert(w);
+        i = find(w);
+    }
+    allowed_words.emplace_back(i.value());
+    return true;
 }
 
 /************************************************************************
@@ -97,10 +112,14 @@ optional<const wordle_word*> dictionary::find_word(const string_view &w) const
 }
 
 /************************************************************************
- * get_random - get a random word from the dictionary.
+ * get_allowed - get a random allowed word from the dictionary.
  ***********************************************************************/
 
-string_view dictionary::get_random() const
+string_view dictionary::get_allowed() const
 {
-    return get_string(random::get_int(size()));
+    if (allowed_words.empty()) {
+        return get_string(random::get_int(size()));
+    } else {
+        return get_string(allowed_words[random::get_int(allowed_words.size())]);
+    }
 }
