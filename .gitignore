@@ -1,0 +1,8 @@
+*.o
+*.html
+oprofile_data/
+*.tar
+*.tar.gz
+\#*
+*~
+cwordle
