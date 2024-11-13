@@ -54,6 +54,7 @@ public:
     void set_result(const wordle_word &w, const wordle_word::match_result &mr);
     wordle_word::match_result try_word(const wordle_word &w);
     void undo();
+    void clear();
     bool add_word(const string &w);
     bool test_exact(const string_view &w);
     const wordle_word &get_current_word() const;

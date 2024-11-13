@@ -554,21 +554,21 @@ bool wordle_word::match_result::parse(const string &m)
  ***********************************************************************/
 
 wordle_word::match_target::match_target(const wordle_word &target, const match_result &mr)
-    : my_word(target), my_mr(mr)
+    : my_word(new wordle_word(target.str())), my_mr(mr)
 {
     match_mask only_partial = my_mr.partial_match & ~my_mr.exact_match;
-    partial_letters = my_word.masked_letters(only_partial);
-    exact_letters = my_word.masked_letters(my_mr.exact_match);
+    partial_letters = my_word->masked_letters(only_partial);
+    exact_letters = my_word->masked_letters(my_mr.exact_match);
     auto x1 = partial_letters | exact_letters;
     auto x2 = ~x1;
-    absent_letters = my_word.all_letters & x2;
+    absent_letters = my_word->all_letters & x2;
     required_letters = partial_letters | exact_letters;
     letter_counter partial_count;
     letter_counter exact_count;
     letter_counter absent_count;
     for (size_t i : irange(0, word_length)) {
         U16 b = 1 << i;
-        char ch = my_word.text[i];
+        char ch = my_word->text[i];
         if (only_partial & b) {
             partial_count.count(ch);
             partial_mask[i] = partial_letters;
@@ -588,7 +588,7 @@ wordle_word::match_target::match_target(const wordle_word &target, const match_r
     partial_match_count = partial_count.size();
     letter_mask already_seen;
     for (size_t i : irange(0, word_length)) {
-        char ch = my_word.text[i];
+        char ch = my_word->text[i];
         if (!already_seen.contains(ch)) {
             already_seen |= ch;
             U16 pc = partial_count.get(ch);
@@ -673,7 +673,7 @@ bool wordle_word::match_target::conforms(const wordle_word &other) const
 bool wordle_word::match_target::conforms_exact(const string_view &w) const
 {
     word_mask wm(w);
-    auto em = my_word.get_exact_mask().select(my_mr.exact_match);
+    auto em = my_word->get_exact_mask().select(my_mr.exact_match);
     return (wm & em)==em;
 }
 

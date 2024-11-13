@@ -104,6 +104,16 @@ const wordle_word &cwordle::get_current_word() const
 }
 
 /************************************************************************
+ * clear - clear results for current word
+ ***********************************************************************/
+
+void cwordle::clear()
+{
+    results.clear();
+    word_lists.clear();
+}
+
+/************************************************************************
  * set_word - set a new word. Return false iff this
  * is not a valid word.
  ***********************************************************************/
@@ -114,8 +124,7 @@ bool cwordle::set_word(const string_view &w)
     if (groomed.empty()) {
         return false;
     } else {
-        results.clear();
-        word_lists.clear();
+        clear();
         current_word.set_word(groomed);
         return true;
     }

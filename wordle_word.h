@@ -505,7 +505,7 @@ public:
             }
         };
     private:
-        const wordle_word &my_word;
+        unique_ptr<wordle_word> my_word;
         match_result my_mr;
         letter_mask partial_letters;
         letter_mask exact_letters;
@@ -528,7 +528,7 @@ public:
         }
         styled_text show() const
         {
-            return my_word.styled_str(my_mr);
+            return my_word->styled_str(my_mr);
         }
     };
 private:
@@ -621,7 +621,7 @@ public:
     {
         return avx::set1_masked(__m256i(), letters.get(), make_letters_mask().get());
     }
-    static string groom(const string_view&w);
+    static string groom(const string_view &w);
     static void set_verbose(bool v) { verbose = v; };
 private:
     match_result do_match(const wordle_word &target, bool verbose) const _always_inline;

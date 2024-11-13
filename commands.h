@@ -92,7 +92,8 @@ public:
     string next_arg(bool end_ok=false);
     optional<int> next_arg_int(bool end_ok=false);
 private:
-    const wordle_word *validate_word(const string &w);
+    string groom_word(const string_view &w);
+    const wordle_word *validate_word(const string_view &w);
     void show_error(const string &err);
     void check_started() const;
     void check_finished();

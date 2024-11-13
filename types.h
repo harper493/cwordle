@@ -14,6 +14,7 @@
 #include <set>
 #include <ranges>
 #include <string_view>
+#include <memory>
 #include <boost/lexical_cast.hpp>
 #include <boost/range/irange.hpp>
 #include <boost/algorithm/string.hpp>
@@ -28,6 +29,7 @@ using std::pair;
 using std::bind;
 using std::mutex;
 using std::set;
+using std::unique_ptr;
 using boost::irange;
 using boost::lexical_cast;
 namespace algorithm = boost::algorithm;
@@ -67,10 +69,11 @@ extern bool strict_mode;
 #define unlikely(X) __builtin_expect(!!(X), 0)
 #define _always_inline __attribute__((always_inline))
 
+#define MIN_WORD_LENGTH 4
+#define MAX_WORD_LENGTH 16
 #define DEFAULT_WORD_LENGTH 5
 #define DEFAULT_LANGUAGE "english"
 #define DEFAULT_PATH "languages/"
-#define MAX_WORD_LENGTH 8
 #define ALPHABET_SIZE 26
 #define AVX512
 

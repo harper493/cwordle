@@ -10,6 +10,8 @@
 using std::regex;
 using std::smatch;
 
+extern bool load_dict();
+
 /************************************************************************
  * The singleton commands object provides the user interface to the cwordle object,
  * which is where all the real work happens.
@@ -119,7 +121,7 @@ void commands::do_best()
 }
 
 /************************************************************************
- * do_entropy - calculate teh entropy for a given word in the 
+ * do_entropy - calculate the entropy for a given word in the 
  * context of the results so far.
  ***********************************************************************/
 
@@ -183,6 +185,7 @@ void commands::do_help()
 void commands::do_new()
 {
     check_finished();
+    the_wordle->clear();
     new_word();
 }
 
@@ -268,7 +271,25 @@ void commands::do_set()
 {
     string w = next_arg();
     check_finished();
-    the_wordle->set_word(validate_word(w)->str());
+    if (sutom_mode) {
+        if (w.size() >= MIN_WORD_LENGTH) {
+            word_length = w.size();
+            load_dict();
+        }
+        if (w.size() >= MIN_WORD_LENGTH && w.find('-')==string::npos) {
+            auto ww = validate_word(w);
+            the_wordle->set_word(ww->str());
+        } else {
+            string t(word_length, '-');
+            t[0] = tolower(w[0]);
+            do {
+                the_wordle->new_word();
+            } while (the_wordle->get_current_word().str()[0] != t[0]);
+            the_wordle->try_word(wordle_word(t));
+        }
+    } else {
+        the_wordle->set_word(validate_word(w)->str());
+    }
 }
 
 /************************************************************************
@@ -377,7 +398,11 @@ void commands::new_word()
 {
     the_wordle->new_word();
     if (sutom_mode) {
-        cout << styled_text(string(the_wordle->get_current_word().str().substr(0, 1)), styled_text::green)
+        string w(the_wordle->get_current_word().str());
+        string t(word_length, '-');
+        t[0] = tolower(w[0]);
+        the_wordle->try_word(wordle_word(t));
+        cout << styled_text(string(w.substr(0, 1)), styled_text::green)
              << styled_text(string(word_length-1, '-'), styled_text::black) << '\n';
     }
 }
@@ -388,12 +413,18 @@ void commands::new_word()
  * the word in its canonical form as returned by groom().
  ***********************************************************************/
 
-const wordle_word *commands::validate_word(const string &w)
+string commands::groom_word(const string_view &w)
 {
     string groomed = wordle_word::groom(w);
     if (groomed.empty()) {
         throw syntax_exception("'%s' is not a valid wordle word (too long or short, too many repeats)", w);
     }
+    return groomed;
+}
+
+const wordle_word *commands::validate_word(const string_view &w)
+{
+    string groomed = groom_word(w);
     auto ww = get_dict().find_word(groomed);
     if (!ww) {
         throw syntax_exception("'%s' is not in the dictionary", groomed);
