@@ -18,6 +18,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/range/irange.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
 
 using std::vector;
 using std::optional;
@@ -39,6 +40,7 @@ using namespace std::placeholders;
 
 using namespace std::chrono;
 namespace views = std::views;
+namespace bfs = boost::filesystem;
 
 using boost::format;
 

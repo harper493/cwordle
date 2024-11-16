@@ -26,6 +26,7 @@ cwordle *the_wordle = NULL;
 int word_length = DEFAULT_WORD_LENGTH;
 commands *the_commands = NULL;
 string the_language;
+vector<string> the_languages;
 string the_path;
 bool strict_mode = false;
 bool sutom_mode = false;
@@ -58,14 +59,43 @@ bool do_options(int argc, char *argv[])
     return true;
 }
 
+void find_languages()
+{
+    the_languages.clear();
+    bfs::path p(the_path);
+    if (bfs::exists(p) && is_directory(p)) {
+        for (auto pi = bfs::directory_iterator(p); pi!=bfs::directory_iterator(); ++pi) {
+            if (is_directory(*pi) && bfs::exists(*pi / "words.txt")) {
+                the_languages.push_back(pi->path().stem().string());
+            }
+        }
+    }
+}
+
+string choose_language(const string_view &ll)
+{
+    find_languages();
+    string best;
+    for (const auto &lang : the_languages) {
+        if (lang.starts_with(ll)) {
+            if (best.empty()) {
+                best = lang;
+            } else {
+                cout << formatted("Language name '%s' is ambiguous\n", ll);
+                return "";
+            }
+        }
+    }
+    if (best.empty()) {
+        cout << formatted("Unknown language '%s'\n", ll);
+    }
+    return best;
+}
+
 bool load_dict()
 {
     string dict_file = options["dict"].as<string>();
-    the_path = options["path"].as<string>();
-    if (!algorithm::ends_with(the_path, "/")) {
-        the_path += '/';
-    }
-    if (dict_file.empty() && the_language.empty()) {
+   if (dict_file.empty() && the_language.empty()) {
         the_language = DEFAULT_LANGUAGE;
         string vocab = options["vocab"].as<string>();
         if (vocab.empty()) {
@@ -114,7 +144,14 @@ int run()
 {
     the_wordle = new cwordle();
     word_length = options["length"].as<int>();
-    the_language = algorithm::to_lower_copy(options["language"].as<string>());
+    the_path = options["path"].as<string>();
+    if (!algorithm::ends_with(the_path, "/")) {
+        the_path += '/';
+    }
+    the_language = choose_language(algorithm::to_lower_copy(options["language"].as<string>()));
+    if (the_language.empty()) {
+        return 1;
+    }
     sutom_mode = options.count("sutom") > 0;
     strict_mode = sutom_mode || options.count("strict") > 0;
     if (!load_dict()) {
