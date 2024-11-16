@@ -1,6 +1,6 @@
 CXX=g++
 RM=rm -f
-CXXFLAGS=-g -march=native -std=c++23 -O0
+CXXFLAGS=-g -march=native -std=c++23 -O3
 LDFLAGS=-g 
 LDLIBS=-lboost_program_options -lboost_filesystem -lboost_system
 
