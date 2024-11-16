@@ -148,9 +148,12 @@ int run()
     if (!algorithm::ends_with(the_path, "/")) {
         the_path += '/';
     }
-    the_language = choose_language(algorithm::to_lower_copy(options["language"].as<string>()));
-    if (the_language.empty()) {
-        return 1;
+    string lang(algorithm::to_lower_copy(options["language"].as<string>()));
+    if (!lang.empty()) {
+        the_language = choose_language(lang);
+        if (the_language.empty()) {
+            return 1;
+        }
     }
     sutom_mode = options.count("sutom") > 0;
     strict_mode = sutom_mode || options.count("strict") > 0;
