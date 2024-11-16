@@ -281,25 +281,31 @@ namespace avx
     {
         return _mm512_cmplt_epu32_mask(x, y);
     }
+    inline bool is_zero(__m512i p)
+    {
+        return cmpne_mask(p, zero(p)) == 0;
+    }
     inline __m512i mask_blend(U16 mask, __m512i x, __m512i y)
     {
         return _mm512_mask_blend_epi32(mask, x, y);
     }
-#if 0
+    inline __m512i add(__m512i p, __m512i q)
+    {
+        return _mm512_add_epi32(p, q);
+    }
+    inline __m512i sub(__m512i p, __m512i q)
+    {
+        return _mm512_sub_epi32(p, q);
+    }
     inline U32 or_i32(__m512i x)
     {
-        __m256i x0 = _mm512_castsi512_si256(_mm512_shuffle_epi32(x, _MM_SHUFFLE(1, 2, 3, 4)));
-        __m256i x1 = _mm256_or_si256(_mm512_castsi512_si256(x), x0);
-        return or_i32(x1);
+        return _mm512_reduce_or_epi32(x);
     }
     inline U32 add_i32(__m512i x)
     {
-        __m256i x0 = _mm512_castsi512_si256(x);
-        __m256i x1 = _mm512_castsi512_si256(_mm512_shuffle_epi32(x, _MM_SHUFFLE(1, 2, 3, 4)));
-        __m256i sum256 = _mm256_add_epi32(x0, x1);
-        return add_i32(sum256);
+        return _mm512_reduce_add_epi32(x);
     }
-#endif
+
 #endif
 };
 

@@ -82,36 +82,6 @@ bool wordle_word::verbose = false;
  ***********************************************************************/
 
 /************************************************************************
- * or256_i32 - find the logical or of the 8 32-bit ints in an __m256i
- ***********************************************************************/
-
-U32 or256_i32(__m256i x)
-{
-    __m256i x0 = _mm256_permute2x128_si256(x,x,1);
-    __m256i x1 = _mm256_or_si256(x,x0);
-    __m256i x2 = _mm256_shuffle_epi32(x1,0b01001110);
-    __m256i x3 = _mm256_or_si256(x1,x2);
-    __m256i x4 = _mm256_shuffle_epi32(x3, 0b11100001);
-    __m256i x5 = _mm256_or_si256(x3, x4);
-    return _mm_cvtsi128_si32(_mm256_castsi256_si128(x5)) ;
-}
-
-/************************************************************************
- * add256_i32 - find the sum of the 8 32-bit ints in an __m256i
- ***********************************************************************/
-
-U32 add256_i32(__m256i x)
-{
-    __m128i sum128 = _mm_add_epi32( 
-                 _mm256_castsi256_si128(x),
-                 _mm256_extracti128_si256(x, 1));
-    __m128i hi64  = _mm_unpackhi_epi64(sum128, sum128);
-    __m128i sum64 = _mm_add_epi32(hi64, sum128);
-    __m128i hi32  = _mm_shuffle_epi32(sum64, _MM_SHUFFLE(2, 3, 0, 1));    // Swap the low two elements
-    return _mm_cvtsi128_si32(_mm_add_epi32(sum64, hi32));
-}
-
-/************************************************************************
  * set_word_basic - set up a wordle_word for a particular 5-letter word, setting
  * up all the fields described in the header comment.
  *
@@ -701,7 +671,7 @@ U32 word_mask::count_letter(letter_mask m) const
 letter_counter word_mask::count_letters() const
 {
     letter_counter result;
-    letter_mask letters(or256_i32(masks));
+    letter_mask letters(avx::or_i32(masks));
     for (const auto m : letters) {
         result.count(char(*m), count_letter(*m));
     }
@@ -733,21 +703,4 @@ bool word_mask::match_text(const word_mask & other) const
     return word_mask(avx::bool_and(masks, other.masks)).to_mask() ==
         wordle_word::match_result::good_bits();
 }
-
-/************************************************************************
- * wm, wms - convenience functions for debugging
- ***********************************************************************/
-
-word_mask wm(__m256i m)
-{
-    return word_mask(m);
-}
-
-string wms(__m256i m)
-{
-    word_mask w(m);
-    return w.str();
-}
-
-
 

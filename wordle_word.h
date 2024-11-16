@@ -7,6 +7,14 @@
 #include "avx.h"
 #include <immintrin.h>
 
+#if MAX_WORD_LENGTH>8
+#define WORD_MASK __m512i
+#define MATCH_MASK __mmask16
+#else
+#define WORD_MASK __m256i
+#define MATCH_MASK __mmask8
+#endif
+
 typedef counter_map<char, U16> letter_counter;
 
 /************************************************************************
@@ -17,7 +25,7 @@ typedef counter_map<char, U16> letter_counter;
 class match_mask
 {
 public:
-    typedef __mmask8 mask_t;
+    typedef MATCH_MASK mask_t;
 private:
     mask_t my_mask;
 public:
@@ -25,7 +33,7 @@ public:
         : my_mask(0)
     {
     }
-    match_mask(const __mmask8 &m)
+    match_mask(const mask_t &m)
         : my_mask(m)
     {
     }
@@ -289,7 +297,7 @@ public:
 class word_mask
 {
 public:
-    typedef __m256i mask_t;
+    typedef WORD_MASK mask_t;
     typedef array<letter_mask, MAX_WORD_LENGTH> just_letters_t;
     typedef just_letters_t::iterator iterator;
     typedef just_letters_t::const_iterator const_iterator;
@@ -300,7 +308,7 @@ public:
     word_mask(mask_t m) : masks(m) { };
     word_mask(const string_view &s)
     {
-        masks = _mm256_setzero_si256();
+        masks = avx::zero(masks);;
         for (int i : irange(0, int(s.size()))) {
             (*this)[i] = letter_mask(s[i]);
         }
@@ -408,7 +416,7 @@ public:
     }
     match_mask to_mask() 
     {
-        mask_t zeros = _mm256_setzero_si256();
+        mask_t zeros = avx::zero(mask_t());
         return avx::cmpgt_mask(masks, zeros);
     }
     size_t count_matches()
@@ -500,8 +508,7 @@ public:
                 : count(c), greater_ok(gtok)
             {
                 word_mask target_all = set_letters(letter_mask(letter));
-                __m256i zeros = _mm256_setzero_si256();
-                mask = avx::mask_blend(exact_mask.get(), target_all.get(), avx::zero(__m256i()));
+                mask = avx::mask_blend(exact_mask.get(), target_all.get(), avx::zero(word_mask::mask_t()));
             }
         };
     private:
@@ -619,32 +626,21 @@ public:
     }
     static word_mask set_letters(letter_mask letters)
     {
-        return avx::set1_masked(__m256i(), letters.get(), make_letters_mask().get());
+        return avx::set1_masked(avx::zero(word_mask::mask_t()), letters.get(), make_letters_mask().get());
     }
     static string groom(const string_view &w);
     static void set_verbose(bool v) { verbose = v; };
 private:
     match_result do_match(const wordle_word &target, bool verbose) const _always_inline;
-    static __mmask8 to_mask(__m256i matched)
+    static match_mask::mask_t to_mask(word_mask::mask_t matched)
     {
-        __m256i zeros = _mm256_setzero_si256();
-        return avx::cmpgt_mask(matched, zeros);
+        return avx::cmpgt_mask(matched, avx::zero(word_mask::mask_t()));
     }
-#ifdef AVX512
-    static __mmask16 to_mask(__m512i matched)
-    {
-        __m512i zeros = _mm512_setzero_si512();
-        return avx::cmpgt_mask(matched, zeros);
-    }
-#endif
-    static size_t count_matches(__m256i matched)
+    static size_t count_matches(word_mask::mask_t matched)
     {
         return __builtin_popcount(to_mask(matched));
     }
 friend class match_target;
 };
-
-word_mask wm(__m256i m);
-string wms(__m256i m);
 
 #endif
