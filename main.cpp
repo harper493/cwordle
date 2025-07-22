@@ -137,7 +137,8 @@ bool load_dict()
 
 int run()
 {
-    the_wordle = new cwordle();
+    dictionary::init();
+    the_wordle = new cwordle(the_dictionary);
     word_length = options["length"].as<int>();
     max_guesses = options["guesses"].as<int>();
     the_path = options["path"].as<string>();

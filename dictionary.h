@@ -43,6 +43,7 @@ public:
     optional<word_index_t> find(const string_view &w) const;
     optional<const wordle_word*> find_word(const string_view &w) const;
     string_view get_allowed() const;
+#if 0
     template<class RANGE>
     void load(const RANGE &r)
     {
@@ -50,12 +51,14 @@ public:
             insert(w);
         }
     }
+#endif
     void load(const string_view &s);
     bool load_file(const string &filename)
     {
         return load_file_base(filename,
                        [&](const string_view &w){ return insert(w, 0); });
     }
+#if 0
     template<class RANGE>
     void load_allowed(const RANGE &r)
     {
@@ -63,6 +66,7 @@ public:
             insert_allowed(w);
         }
     }
+#endif
     void load_allowed(const string_view &s);
     bool load_file_allowed(const string &filename)
     {
@@ -77,6 +81,7 @@ public:
     {
         return words.end();
     }
+    static void init();
 private:
     void load_base(const string_view &s, std::function<bool(const string_view&)> inserter);
     bool load_file_base(const string &filename, std::function<bool(const string_view&)> inserter);

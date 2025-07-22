@@ -3,6 +3,17 @@
 #include <fstream>
 
 /************************************************************************
+ * init - create the single staic dictionary
+ ***********************************************************************/
+
+void dictionary::init()
+{
+    the_dictionary = new dictionary();
+    the_dictionary->load(::wordle_words);
+    the_dictionary->load_allowed(::allowed_words);
+}
+
+/************************************************************************
  * load_file - load words from a file. Return false if there was
  * a problem.
  ***********************************************************************/

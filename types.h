@@ -60,16 +60,20 @@ typedef signed char S8;
 
 class cwordle;
 class commands;
+class dictionary;
 
 extern po::variables_map options;
 extern cwordle *the_wordle;
 extern commands *the_commands;
+extern dictionary *the_dictionary;
 extern int word_length;
 extern int max_guesses;
 extern string the_language;
 extern string the_path;
 extern bool sutom_mode;
 extern bool strict_mode;
+extern string wordle_words;
+extern string allowed_words;
 
 pair<string,string> get_dict_filenames();
 bool do_options(int argc, char *argv[]);

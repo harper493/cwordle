@@ -10,6 +10,7 @@ cwordle *the_wordle = NULL;
 int word_length = DEFAULT_WORD_LENGTH;
 int max_guesses = DEFAULT_MAX_GUESSES;
 commands *the_commands = NULL;
+dictionary *the_dictionary = NULL;
 string the_language;
 vector<string> the_languages;
 string the_path;

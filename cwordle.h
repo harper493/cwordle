@@ -13,14 +13,14 @@ public:
     typedef partial_sorted_list<const wordle_word*, float> result_list_t;
     typedef result_list_t::value_type best_result_t;
 private:
-    dictionary my_dict;
+    dictionary &my_dict;
     word_list all_my_words;
     vector<wordle_word::match_target> results;
     vector<word_list> word_lists;
     wordle_word current_word;
 public:
-    cwordle()
-        : all_my_words(my_dict) { };
+    cwordle(dictionary *dict)
+        : my_dict(*dict), all_my_words(my_dict) { };
     void load_words(const vector<string> &w);
     void load_words(const string_view &s);
     bool load_file(const string &filename);
