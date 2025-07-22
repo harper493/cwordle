@@ -77,7 +77,7 @@ bool dictionary::insert_allowed(const string_view &w)
         insert(w);
         i = find(w);
     }
-    allowed_words.emplace_back(i.value());
+    allowed_words.push_back(i.value());
     return true;
 }
 

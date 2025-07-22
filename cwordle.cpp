@@ -89,7 +89,7 @@ void cwordle::new_word()
  * remaining - list remaining usable words
  ***********************************************************************/
 
-const word_list &cwordle::remaining()
+const word_list &cwordle::remaining() const
 {
     return word_lists.empty() ? all_my_words : word_lists.back();
 }
@@ -192,3 +192,4 @@ bool cwordle::test_exact(const string_view &w)
 {
     return empty() || results.back().conforms_exact(w);
 }
+

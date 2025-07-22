@@ -19,6 +19,7 @@
 #include <boost/range/irange.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/program_options.hpp>
 
 using std::vector;
 using std::optional;
@@ -41,6 +42,7 @@ using namespace std::placeholders;
 using namespace std::chrono;
 namespace views = std::views;
 namespace bfs = boost::filesystem;
+namespace po = boost::program_options;
 
 using boost::format;
 
@@ -59,13 +61,18 @@ typedef signed char S8;
 class cwordle;
 class commands;
 
+extern po::variables_map options;
 extern cwordle *the_wordle;
 extern commands *the_commands;
 extern int word_length;
+extern int max_guesses;
 extern string the_language;
 extern string the_path;
 extern bool sutom_mode;
 extern bool strict_mode;
+
+pair<string,string> get_dict_filenames();
+bool do_options(int argc, char *argv[]);
 
 #define likely(X) __builtin_expect(!!(X), 1)
 #define unlikely(X) __builtin_expect(!!(X), 0)
@@ -74,6 +81,7 @@ extern bool strict_mode;
 #define MIN_WORD_LENGTH 4
 #define MAX_WORD_LENGTH 16
 #define DEFAULT_WORD_LENGTH 5
+#define DEFAULT_MAX_GUESSES 6
 #define DEFAULT_LANGUAGE "english"
 #define DEFAULT_PATH "languages/"
 #define ALPHABET_SIZE 26

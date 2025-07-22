@@ -12,6 +12,7 @@ private:
     static void test2();
     static void test3();
     static void test4();
+    static void test5();
     static string t(const string &w1, const string &w2, const string &correct,
              const vector<string> &good, const vector<string> &bad);
 };

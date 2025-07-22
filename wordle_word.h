@@ -487,6 +487,20 @@ public:
         {
             return (partial_match.get() << 5) | exact_match.get();
         }
+        string str() const
+        {
+            string result;
+            for (size_t i=0; i<word_length; ++i) {
+                if (is_exact(i)) {
+                    result += "2";
+                } else if (is_partial(i)) {
+                    result += "1";
+                } else {
+                    result += "0";
+                }
+            }
+            return result;
+        }
         bool parse(const string &s);
         static U16 good_bits()
         {
@@ -536,6 +550,10 @@ public:
         styled_text show() const
         {
             return my_word->styled_str(my_mr);
+        }
+        string_view str() const
+        {
+            return my_word->str();
         }
     };
 private:

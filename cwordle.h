@@ -49,7 +49,7 @@ public:
     {
         return results;
     }
-    const word_list &remaining();
+    const word_list &remaining() const;
     bool set_word(const string_view &w);
     void set_result(const wordle_word &w, const wordle_word::match_result &mr);
     wordle_word::match_result try_word(const wordle_word &w);
@@ -57,6 +57,22 @@ public:
     void clear();
     bool add_word(const string &w);
     bool test_exact(const string_view &w);
+    bool is_won() const
+    {
+        return remaining().size()==1 && get_last_result().str()==current_word.str();
+    }
+    bool is_lost() const
+    {
+        return results.size()>=max_guesses && get_last_result().str()!=current_word.str();
+    }
+    vector<string> get_guesses() const
+    {
+        vector<string> result;
+        for (const auto &w : results) {
+            result.emplace_back(w.str());
+        }
+        return result;
+    }
     const wordle_word &get_current_word() const;
 };
 
