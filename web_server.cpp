@@ -65,9 +65,37 @@ int main() {
     do_options(1, (char**)argv);
     dictionary::init();
     cwordle *the_game = NULL;
-    router.options("/*", [&](const Rest::Request&, Http::ResponseWriter response) {
+    // Register /reveal route before any catch-all or wildcard routes
+    router.post("/reveal", [&](const Rest::Request& req, Http::ResponseWriter response) {
+        std::cerr << "Reveal endpoint hit" << std::endl;
+        json body;
+        try {
+            body = json::parse(req.body());
+        } catch (...) {
+            add_cors_headers(response);
+            response.send(Http::Code::Bad_Request, R"({\"error\":\"Invalid JSON\"})", MIME(Application, Json));
+            return Rest::Route::Result::Ok;
+        }
+        if (!body.is_object() || !body.count("game_id")) {
+            add_cors_headers(response);
+            response.send(Http::Code::Bad_Request, R"({\"error\":\"Missing game_id\"})", MIME(Application, Json));
+            return Rest::Route::Result::Ok;
+        }
+        string game_id = body["game_id"].get<std::string>();
+        cwordle* game = nullptr;
+        {
+            lock_guard<mutex> lock(games_mutex);
+            auto it = games.find(game_id);
+            if (it == games.end()) {
+                add_cors_headers(response);
+                response.send(Http::Code::Not_Found, R"({\"error\":\"No such game\"})", MIME(Application, Json));
+                return Rest::Route::Result::Ok;
+            }
+            game = it->second;
+        }
+        json res = { {"word", game->get_current_word().str()} };
         add_cors_headers(response);
-        response.send(Http::Code::No_Content);
+        response.send(Http::Code::Ok, res.dump(), MIME(Application, Json));
         return Rest::Route::Result::Ok;
     });
     router.post("/start", [&](const Rest::Request&, Http::ResponseWriter response) {
@@ -176,6 +204,12 @@ int main() {
         json res = { {"best", words} };
         add_cors_headers(response);
         response.send(Http::Code::Ok, res.dump(), MIME(Application, Json));
+        return Rest::Route::Result::Ok;
+    });
+    // Register catch-all OPTIONS route after specific routes
+    router.options("/*", [&](const Rest::Request&, Http::ResponseWriter response) {
+        add_cors_headers(response);
+        response.send(Http::Code::No_Content);
         return Rest::Route::Result::Ok;
     });
     router.get("/status", [&](const Rest::Request& req, Http::ResponseWriter response) {

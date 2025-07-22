@@ -55,4 +55,15 @@ export async function bestWords(gameId: string): Promise<string[]> {
   if (!res.ok) throw new Error('Failed to get best words');
   const data = await res.json();
   return data.best || [];
+}
+
+export async function reveal(gameId: string): Promise<string> {
+  const res = await fetch(`${API_URL}/reveal`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ game_id: gameId }),
+  });
+  if (!res.ok) throw new Error('Failed to reveal word');
+  const data = await res.json();
+  return data.word || data.the_word || data.answer;
 } 

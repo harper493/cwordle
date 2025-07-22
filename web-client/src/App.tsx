@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './App.css';
 import { WordleBoard, Feedback } from './WordleBoard';
-import { startGame, submitGuess, getStatus, bestWords } from './api';
+import { startGame, submitGuess, getStatus, bestWords, reveal } from './api';
 
 const QWERTY_ROWS = [
   ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -173,6 +173,16 @@ function App() {
     }
   };
 
+  const handleReveal = async () => {
+    if (!gameId) return;
+    try {
+      const word = await reveal(gameId);
+      setTheWord(word);
+    } catch (e) {
+      setError('Failed to reveal word');
+    }
+  };
+
   // Button style: half the previous size
   const buttonStyle = {
     marginTop: 5,
@@ -237,7 +247,7 @@ function App() {
         </div>
         {won && <div style={{ color: 'lightgreen', fontWeight: 'bold' }}>You won!</div>}
         {lost && <div style={{ color: 'salmon', fontWeight: 'bold' }}>You lost!</div>}
-        {lost && theWord && <div style={{ color: 'orange', fontWeight: 'bold' }}>The word was: {theWord}</div>}
+        {theWord && <div style={{ color: 'orange', fontWeight: 'bold' }}>The word was: {theWord}</div>}
         {/* Remove the visible input and word length display. Only keep the hidden input for keyboard capture. */}
         <div style={{ height: 0, overflow: 'hidden' }}>
           <input
@@ -273,6 +283,14 @@ function App() {
             style={buttonStyle}
           >
             Restart
+          </button>
+          <button
+            type="button"
+            onClick={handleReveal}
+            style={buttonStyle}
+            disabled={won || lost || !!theWord}
+          >
+            Reveal
           </button>
         </div>
         {error && <div style={{ color: 'red' }}>{error}</div>}
