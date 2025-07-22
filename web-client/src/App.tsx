@@ -39,7 +39,7 @@ function getEliminatedLetters(guesses: string[], feedback: Feedback[][]): Set<st
   return eliminated;
 }
 
-const QwertyKeyboard: React.FC<{ guesses: string[]; feedback: Feedback[][] }> = ({ guesses, feedback }) => {
+const QwertyKeyboard: React.FC<{ guesses: string[]; feedback: Feedback[][]; onKeyClick: (letter: string) => void }> = ({ guesses, feedback, onKeyClick }) => {
   const eliminated = getEliminatedLetters(guesses, feedback);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginRight: 24, marginTop: 56 }}>
@@ -48,6 +48,7 @@ const QwertyKeyboard: React.FC<{ guesses: string[]; feedback: Feedback[][] }> = 
           {row.map(letter => (
             <div
               key={letter}
+              onClick={() => !eliminated.has(letter) && onKeyClick(letter)}
               style={{
                 width: 28,
                 height: 38,
@@ -62,6 +63,7 @@ const QwertyKeyboard: React.FC<{ guesses: string[]; feedback: Feedback[][] }> = 
                 fontSize: 18,
                 border: '1px solid #888',
                 userSelect: 'none',
+                cursor: eliminated.has(letter) ? 'default' : 'pointer',
               }}
             >
               {letter}
@@ -183,6 +185,12 @@ function App() {
     }
   };
 
+  const handleKeyClick = (letter: string) => {
+    if (input.length < wordLength && !won && !lost) {
+      setInput(input + letter);
+    }
+  };
+
   // Button style: half the previous size
   const buttonStyle = {
     marginTop: 5,
@@ -204,7 +212,7 @@ function App() {
         <h1>Wordle Web Client</h1>
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', width: '100%', justifyContent: 'center' }}>
           {/* QWERTY keyboard on the left */}
-          <QwertyKeyboard guesses={guesses} feedback={feedback} />
+          <QwertyKeyboard guesses={guesses} feedback={feedback} onKeyClick={handleKeyClick} />
           <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start' }}>
             <div style={{ flex: '0 1 auto', alignSelf: 'flex-start' }} onClick={handleBoardClick}>
               <WordleBoard guesses={guesses} feedback={feedback} wordLength={wordLength} input={input} />
