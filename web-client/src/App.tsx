@@ -3,6 +3,76 @@ import './App.css';
 import { WordleBoard, Feedback } from './WordleBoard';
 import { startGame, submitGuess, getStatus, bestWords } from './api';
 
+const QWERTY_ROWS = [
+  ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+  ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+  ['Z', 'X', 'C', 'V', 'B', 'N', 'M'],
+];
+
+function getEliminatedLetters(guesses: string[], feedback: Feedback[][]): Set<string> {
+  // A letter is eliminated if it only ever received 0 feedback in all guesses
+  const eliminated = new Set<string>();
+  const seen = new Set<string>();
+  for (let i = 0; i < guesses.length; ++i) {
+    const guess = guesses[i];
+    const fb = feedback[i] || [];
+    for (let j = 0; j < guess.length; ++j) {
+      const letter = guess[j]?.toUpperCase();
+      if (!letter || seen.has(letter)) continue;
+      seen.add(letter);
+      // If this letter never got a 1 or 2 in any position in any guess, eliminate it
+      let found = false;
+      for (let k = 0; k < guesses.length; ++k) {
+        const g = guesses[k];
+        const f = feedback[k] || [];
+        for (let l = 0; l < g.length; ++l) {
+          if (g[l]?.toUpperCase() === letter && f[l] > 0) {
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+      if (!found) eliminated.add(letter);
+    }
+  }
+  return eliminated;
+}
+
+const QwertyKeyboard: React.FC<{ guesses: string[]; feedback: Feedback[][] }> = ({ guesses, feedback }) => {
+  const eliminated = getEliminatedLetters(guesses, feedback);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginRight: 24, marginTop: 56 }}>
+      {QWERTY_ROWS.map((row, i) => (
+        <div key={i} style={{ display: 'flex', flexDirection: 'row', marginBottom: 2 }}>
+          {row.map(letter => (
+            <div
+              key={letter}
+              style={{
+                width: 28,
+                height: 38,
+                margin: 1,
+                borderRadius: 4,
+                background: eliminated.has(letter) ? '#787c7e' : '#d3d6da',
+                color: eliminated.has(letter) ? 'white' : 'black',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: 18,
+                border: '1px solid #888',
+                userSelect: 'none',
+              }}
+            >
+              {letter}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 function App() {
   const [gameId, setGameId] = useState<string | null>(null);
   const [guesses, setGuesses] = useState<string[]>([]);
@@ -123,41 +193,45 @@ function App() {
       <header className="App-header">
         <h1>Wordle Web Client</h1>
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', width: '100%', justifyContent: 'center' }}>
-          <div style={{ flex: '0 1 auto' }} onClick={handleBoardClick}>
-            <WordleBoard guesses={guesses} feedback={feedback} wordLength={wordLength} input={input} />
-          </div>
-          <div style={{ flex: '0 0 auto', marginLeft: 24, marginTop: 8, alignSelf: 'flex-start', textAlign: 'left' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <label style={{ fontSize: '0.4em', marginRight: 8, marginBottom: 4 }}>
-                <input
-                  type="checkbox"
-                  checked={showRemaining}
-                  onChange={e => setShowRemaining(e.target.checked)}
-                  style={{ marginRight: 4 }}
-                />
-                Show remaining count
-              </label>
-              {showRemaining && typeof remaining === 'number' && (
-                <div style={{ color: 'deepskyblue', fontWeight: 'bold', fontSize: '0.4em', marginTop: 6, marginBottom: 4 }}>
-                  Remaining: {remaining}
-                </div>
-              )}
-              <label style={{ fontSize: '0.4em', marginRight: 8, marginBottom: 4 }}>
-                <input
-                  type="checkbox"
-                  checked={showBest}
-                  onChange={e => setShowBest(e.target.checked)}
-                  style={{ marginRight: 4 }}
-                />
-                Show best words
-              </label>
-              {showBest && bestList.length > 0 && (typeof remaining !== 'number' || remaining > 1) && (
-                <ul style={{ fontSize: '0.4em', color: 'gold', margin: '8px 0 0 0', padding: 0, listStyle: 'none', textAlign: 'left' }}>
-                  {bestList.map((word, i) => (
-                    <li key={i}>{word}</li>
-                  ))}
-                </ul>
-              )}
+          {/* QWERTY keyboard on the left */}
+          <QwertyKeyboard guesses={guesses} feedback={feedback} />
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start' }}>
+            <div style={{ flex: '0 1 auto', alignSelf: 'flex-start' }} onClick={handleBoardClick}>
+              <WordleBoard guesses={guesses} feedback={feedback} wordLength={wordLength} input={input} />
+            </div>
+            <div style={{ flex: '0 0 auto', marginLeft: 24, marginTop: 0, alignSelf: 'flex-start', textAlign: 'left' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <label style={{ fontSize: '0.4em', marginRight: 8, marginBottom: 4 }}>
+                  <input
+                    type="checkbox"
+                    checked={showRemaining}
+                    onChange={e => setShowRemaining(e.target.checked)}
+                    style={{ marginRight: 4 }}
+                  />
+                  Show remaining count
+                </label>
+                {showRemaining && typeof remaining === 'number' && (
+                  <div style={{ color: 'deepskyblue', fontWeight: 'bold', fontSize: '0.4em', marginTop: 6, marginBottom: 4 }}>
+                    Remaining: {remaining}
+                  </div>
+                )}
+                <label style={{ fontSize: '0.4em', marginRight: 8, marginBottom: 4 }}>
+                  <input
+                    type="checkbox"
+                    checked={showBest}
+                    onChange={e => setShowBest(e.target.checked)}
+                    style={{ marginRight: 4 }}
+                  />
+                  Show best words
+                </label>
+                {showBest && bestList.length > 0 && (typeof remaining !== 'number' || remaining > 1) && (
+                  <ul style={{ fontSize: '0.4em', color: 'gold', margin: '8px 0 0 0', padding: 0, listStyle: 'none', textAlign: 'left' }}>
+                    {bestList.map((word, i) => (
+                      <li key={i}>{word}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
         </div>
