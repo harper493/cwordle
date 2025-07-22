@@ -50,11 +50,7 @@ public:
             insert(w);
         }
     }
-    void load(const string_view &s)
-    {
-        load_base(s,
-                  [&](const string_view &w){ return insert(w, 0); });
-    }
+    void load(const string_view &s);
     bool load_file(const string &filename)
     {
         return load_file_base(filename,
@@ -67,11 +63,7 @@ public:
             insert_allowed(w);
         }
     }
-    void load_allowed(const string_view &s)
-    {
-        load_base(s,
-                  [&](const string_view &w){ return insert_allowed(w); });
-    }
+    void load_allowed(const string_view &s);
     bool load_file_allowed(const string &filename)
     {
         return load_file_base(filename,
@@ -88,6 +80,7 @@ public:
 private:
     void load_base(const string_view &s, std::function<bool(const string_view&)> inserter);
     bool load_file_base(const string &filename, std::function<bool(const string_view&)> inserter);
+    size_t count_words(const string_view &s);
 };
 
 #endif

@@ -65,6 +65,10 @@ public:
     {
         return results.size()>=max_guesses && get_last_result().str()!=current_word.str();
     }
+    bool is_over() const
+    {
+        return is_won() || is_lost();
+    }
     vector<string> get_guesses() const
     {
         vector<string> result;

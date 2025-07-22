@@ -118,7 +118,7 @@ int main() {
             }
             the_game = it->second;
         }
-        if (the_game->is_won() || the_game->is_lost()) {
+        if (the_game->is_over()) {
             add_cors_headers(response);
             response.send(Http::Code::Ok, R"({\"error\":\"Game over\"})", MIME(Application, Json));
             return Rest::Route::Result::Ok;
@@ -139,6 +139,44 @@ int main() {
         if (the_game->is_lost()) {
             res["the_word"] = the_game->get_current_word().str();
         }
+        add_cors_headers(response);
+        response.send(Http::Code::Ok, res.dump(), MIME(Application, Json));
+        return Rest::Route::Result::Ok;
+    });
+    router.post("/best", [&](const Rest::Request& req, Http::ResponseWriter response) {
+        json body;
+        try {
+            body = json::parse(req.body());
+        } catch (...) {
+            add_cors_headers(response);
+            response.send(Http::Code::Bad_Request, R"({\"error\":\"Invalid JSON\"})", MIME(Application, Json));
+            return Rest::Route::Result::Ok;
+        }
+        if (!body.is_object() || !body.count("game_id")) {
+            add_cors_headers(response);
+            response.send(Http::Code::Bad_Request, R"({\"error\":\"Missing game_id\"})", MIME(Application, Json));
+            return Rest::Route::Result::Ok;
+        }
+        string game_id = body["game_id"].get<std::string>();
+        cwordle* game = nullptr;
+        {
+            lock_guard<mutex> lock(games_mutex);
+            auto it = games.find(game_id);
+            if (it == games.end()) {
+                add_cors_headers(response);
+                response.send(Http::Code::Not_Found, R"({\"error\":\"No such game\"})", MIME(Application, Json));
+                return Rest::Route::Result::Ok;
+            }
+            game = it->second;
+        }
+        std::vector<std::string> words;
+        if (!(game->is_over() || game->size()==0)) {            
+            auto best_list = game->best(5);
+            for (const auto& r : best_list) {
+                if (r.key) words.push_back(string(r.key->str()));
+            }
+        }
+        json res = { {"best", words} };
         add_cors_headers(response);
         response.send(Http::Code::Ok, res.dump(), MIME(Application, Json));
         return Rest::Route::Result::Ok;
@@ -170,7 +208,9 @@ int main() {
             {"lost", the_game->is_lost()},
             {"length", word_length}
         };
-        if (the_game->is_won() || the_game->is_lost()) res["answer"] = the_game->get_current_word().str();
+        if (the_game->is_over()) {
+            res["answer"] = the_game->get_current_word().str();
+        }
         if (the_game->is_lost()) {
             res["the_word"] = the_game->get_current_word().str();
         }

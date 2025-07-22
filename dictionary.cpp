@@ -47,6 +47,17 @@ void dictionary::load_base(const string_view &s, std::function<bool(const string
 }
 
 /************************************************************************
+ * count_words - count the number of words in a string
+ ***********************************************************************/
+
+size_t dictionary::count_words(const string_view &s)
+{
+    size_t count = 0;
+    load_base(s, [&](const string_view&){ ++count; return true; });
+    return count;
+}
+
+/************************************************************************
  * insert - insert a word. Return false if the word is badly formed or
  * if it already present.
  ***********************************************************************/
@@ -79,6 +90,25 @@ bool dictionary::insert_allowed(const string_view &w)
     }
     allowed_words.push_back(i.value());
     return true;
+}
+
+/************************************************************************
+ * load and load_allowed - pre-allocate the vectors before loading
+ ***********************************************************************/
+
+void dictionary::load(const string_view &s)
+{
+    words.reserve(words.size() + count_words(s));
+    load_base(s, [&](const string_view &w){ return insert(w, 0); });
+}
+
+void dictionary::load_allowed(const string_view &s)
+{
+    size_t wc = count_words(s);
+    words.reserve(words.size() + wc);
+    allowed_words.reserve(allowed_words.size() + wc);
+    load_base(s,
+              [&](const string_view &w){ return insert_allowed(w); });
 }
 
 /************************************************************************
