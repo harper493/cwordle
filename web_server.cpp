@@ -16,8 +16,6 @@ using namespace Pistache;
 using json = nlohmann::json;
 using namespace std;
 
-extern string wordle_words;
-extern string allowed_words;
 
 struct GameState {
     string answer;
@@ -65,6 +63,7 @@ int main() {
     Rest::Router router;
     const char* argv[] = {"cwordle"};
     do_options(1, (char**)argv);
+    dictionary::init();
     cwordle *the_game = NULL;
     router.options("/*", [&](const Rest::Request&, Http::ResponseWriter response) {
         add_cors_headers(response);
@@ -75,11 +74,9 @@ int main() {
         string game_id = generate_game_id();
         {
             lock_guard<mutex> lock(games_mutex);
-            the_game = new cwordle();
+            the_game = new cwordle(the_dictionary);
             games[game_id] = the_game;
         }
-        the_game->load_words(wordle_words);
-        the_game->load_words_allowed(allowed_words);
         the_game->new_word();
         json res = { {"game_id", game_id}, {"length", word_length} };
         add_cors_headers(response);
