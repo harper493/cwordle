@@ -175,8 +175,6 @@ function App() {
       } else {
         res = await submitGuess(gameId, input);
       }
-      console.log("submitGuess response (full):", JSON.stringify(res, null, 2));
-      console.log("submitGuess response:", res);
       setGuesses(res.guesses);
       setFeedback(prev => {
         let newFeedback = res.feedback;
@@ -240,10 +238,6 @@ function App() {
     display: 'inline-block',
     verticalAlign: 'middle',
   };
-
-  // Add logs before rendering WordleBoard
-  console.log("App.tsx: guesses", guesses);
-  console.log("App.tsx: feedback", feedback);
 
   return (
     <div className="App">
