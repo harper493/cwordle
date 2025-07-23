@@ -42,17 +42,24 @@ function getEliminatedLetters(guesses: string[], feedback: Feedback[][]): Set<st
 const QwertyKeyboard: React.FC<{ guesses: string[]; feedback: Feedback[][]; onKeyClick: (letter: string) => void }> = ({ guesses, feedback, onKeyClick }) => {
   const eliminated = getEliminatedLetters(guesses, feedback);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginRight: 24, marginTop: 56 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginRight: 24, marginTop: 56 }}>
       {QWERTY_ROWS.map((row, i) => (
-        <div key={i} style={{ display: 'flex', flexDirection: 'row', marginBottom: 2 }}>
-          {row.map(letter => (
+        <div
+          key={i}
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            marginBottom: 2,
+            paddingLeft: i === 2 ? 36 : 0,
+          }}
+        >
+          {row.map((letter) => (
             <div
               key={letter}
               onClick={() => !eliminated.has(letter) && onKeyClick(letter)}
               style={{
                 width: 28,
                 height: 38,
-                margin: 1,
                 borderRadius: 4,
                 background: eliminated.has(letter) ? '#787c7e' : '#d3d6da',
                 color: eliminated.has(letter) ? 'white' : 'black',
@@ -64,6 +71,7 @@ const QwertyKeyboard: React.FC<{ guesses: string[]; feedback: Feedback[][]; onKe
                 border: '1px solid #888',
                 userSelect: 'none',
                 cursor: eliminated.has(letter) ? 'default' : 'pointer',
+                margin: 1,
               }}
             >
               {letter}
