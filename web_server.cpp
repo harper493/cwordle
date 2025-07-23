@@ -217,19 +217,13 @@ int main() {
         // Prepare remaining words list
         std::vector<std::string> rem_words;
         const auto& rem = game->remaining();
-        size_t sz = rem.size();
-        size_t limit = std::min<size_t>(20, sz);
-        for (size_t i = 0; i < limit; ++i) {
-            rem_words.emplace_back(game->get_dictionary().get_string(rem[i]));
-        }
-        if (sz > 20) rem_words.push_back("...");
         json res = {
             {"feedback", std::vector<std::vector<int>>{fb}},
             {"won", game->is_won()},
             {"lost", game->is_lost()},
             {"guesses", game->get_guesses()},
             {"remaining", game->remaining().size()},
-            {"remaining_words", rem_words}
+            {"remaining_words", rem.to_string_vector(20) }
         };
         if (game->is_lost()) {
             res["the_word"] = game->get_current_word().str();

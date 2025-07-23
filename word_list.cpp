@@ -189,3 +189,19 @@ string word_list::str(size_t length) const
     return result;
 }
 
+/************************************************************************
+ * to_sting_vector - as above but return a vector of strings
+ ***********************************************************************/
+
+vector<string> word_list::to_string_vector(size_t length) const
+{
+    vector<string> result;
+    for (const auto &idx : *this) {
+        if (length > 0 && result.size() >= length) {
+            result.emplace_back("...");
+            break;
+        }
+        result.emplace_back(my_dict[idx].str());
+    }
+    return result;
+}

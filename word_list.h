@@ -30,6 +30,7 @@ public:
     word_list sorted() const;
     float entropy(const wordle_word &w) const;
     string str(size_t length=0) const;
+    vector<string> to_string_vector(size_t length=0) const;
 private:
     void fill() const;
     void insert(dictionary::word_index_t word)
