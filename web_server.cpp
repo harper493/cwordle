@@ -51,7 +51,7 @@ public:
 
 /************************************************************************
  * validate_request - ensure that the request is valid, extract the
- * game_id and find the corresponding game, also check that oth
+ * game_id and find the corresponding game, also check that all
  * required fields are present. Throw a ReqestException if there is an
  * error, otherwise return the JSON body and the game pointer.
  ***********************************************************************/
@@ -99,56 +99,58 @@ void send_error_response(Http::ResponseWriter &response, const string &err)
                   MIME(Application, Json));
 }
 
+/************************************************************************
+ * main processing loop with rest endpoints
+ ***********************************************************************/
+
 int main() {
     Rest::Router router;
     const char* argv[] = {"cwordle"};
     do_options(1, (char**)argv);
     dictionary::init();
-    router.post("/reveal", [&](const Rest::Request& req, Http::ResponseWriter response) {
-        json body;
-        try {
-            body = json::parse(req.body());
-        } catch (...) {
-            add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({"error":"Invalid JSON"})", MIME(Application, Json));
-            return Rest::Route::Result::Ok;
-        }
-        if (!body.is_object() || !body.count("game_id")) {
-            add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({"error":"Missing game_id"})", MIME(Application, Json));
-            return Rest::Route::Result::Ok;
-        }
-        string game_id = body["game_id"].get<std::string>();
-        cwordle* game = nullptr;
-        {
-            lock_guard<mutex> lock(games_mutex);
-            auto it = games.find(game_id);
-            if (it == games.end()) {
-                add_cors_headers(response);
-                response.send(Http::Code::Not_Found, R"({"error":"No such game"})", MIME(Application, Json));
-                return Rest::Route::Result::Ok;
-            }
-            game = it->second;
-        }
-        json res = { {"word", game->get_current_word().str()} };
-        add_cors_headers(response);
-        response.send(Http::Code::Ok, res.dump(), MIME(Application, Json));
-        return Rest::Route::Result::Ok;
-    });
-    router.post("/start", [&](const Rest::Request&, Http::ResponseWriter response) {
-        cwordle *the_game = NULL;
+
+    /************************************************************************
+     * Handle /start endpoint
+     ***********************************************************************/
+        
+    router.post("/start", [&](const Rest::Request&, Http::ResponseWriter response)
+    {
+        cwordle *game = NULL;
         string game_id = generate_game_id();
         {
             lock_guard<mutex> lock(games_mutex);
-            the_game = new cwordle(the_dictionary);
-            games[game_id] = the_game;
+            game = new cwordle(the_dictionary);
+            games[game_id] = game;
         }
-        the_game->new_word();
+        game->new_word();
         json res = { {"game_id", game_id}, {"length", word_length} };
-        add_cors_headers(response);
-        response.send(Http::Code::Ok, res.dump(), MIME(Application, Json));
+        send_good_response(response, res);
         return Rest::Route::Result::Ok;
     });
+
+    /************************************************************************
+     * Handle /reveal endpoint
+     ***********************************************************************/
+    
+    router.post("/reveal", [&](const Rest::Request& req, Http::ResponseWriter response)
+    {
+        try {
+            json body;
+            cwordle *game;
+            tie(body, game) = validate_request(req, {});
+            json res = { {"word", game->get_current_word().str()} };
+            send_good_response(response, res);
+            return Rest::Route::Result::Ok;
+        } catch (const RequestException &exc) {
+            send_error_response(response, exc.what());
+            return Rest::Route::Result::Ok;
+        }
+    });
+
+    /************************************************************************
+     * Handle /guess endpoint
+     ***********************************************************************/
+
     router.post("/guess", [&](const Rest::Request& req, Http::ResponseWriter response)
     {
         try {
@@ -159,12 +161,11 @@ int main() {
             if (the_game->is_over()) {
                 throw RequestException("Game over");
             }
-            wordle_word wguess(guess); // Construct wordle_word from guess string
             // Validate the guess
             if (!the_game->is_valid_word(guess)) {
                 throw RequestException("Invalid word");
             }
-            auto mr = the_game->try_word(wguess);
+            auto mr = the_game->try_word(wordle_word(guess));
             vector<int> fb;
             for (auto ch : mr.str()) {
                 fb.emplace_back(lexical_cast<int>(string(1, ch)));
@@ -190,144 +191,129 @@ int main() {
             return Rest::Route::Result::Ok;
         }
     });
-    router.post("/explore", [&](const Rest::Request& req, Http::ResponseWriter response) {
-        json body;
+
+    /************************************************************************
+     * Handle /explore endpoint
+     ***********************************************************************/
+        
+    router.post("/explore", [&](const Rest::Request& req, Http::ResponseWriter response)
+    {
         try {
-            body = json::parse(req.body());
-        } catch (...) {
-            add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({"error":"Invalid JSON"})", MIME(Application, Json));
-            return Rest::Route::Result::Ok;
-        }
-        if (!body.is_object() || !body.count("game_id") || !body.count("guess") || !body.count("explore_state")) {
-            add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({"error":"Missing fields"})", MIME(Application, Json));
-            return Rest::Route::Result::Ok;
-        }
-        string game_id = body["game_id"].get<std::string>();
-        string guess = boost::algorithm::to_lower_copy(body["guess"].get<std::string>());
-        std::vector<int> explore_state = body["explore_state"].get<std::vector<int>>();
-        cwordle* game = nullptr;
-        {
-            lock_guard<mutex> lock(games_mutex);
-            auto it = games.find(game_id);
-            if (it == games.end()) {
-                add_cors_headers(response);
-                response.send(Http::Code::Not_Found, R"({"error":"No such game"})", MIME(Application, Json));
-                return Rest::Route::Result::Ok;
+            json body;
+            cwordle *game;
+            tie(body, game) = validate_request(req, {"guess"});
+            string guess = boost::algorithm::to_lower_copy(body["guess"].get<std::string>());
+            std::vector<int> explore_state = body["explore_state"].get<std::vector<int>>();
+            // Validate the guess
+            if (!game->is_valid_word(guess)) {
+                throw RequestException("Invalid word");
             }
-            game = it->second;
-        }
-        // Call set_result with guess and explore_state
-        wordle_word wguess(guess);
-        // Validate the guess
-        if (!game->is_valid_word(guess)) {
-            add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({"error":"Invalid word"})", MIME(Application, Json));
+            // Convert explore_state to a string for match_result
+            std::string match_str;
+            for (int v : explore_state) {
+                match_str += char('0' + v);
+            }
+            wordle_word::match_result mr(match_str);
+            game->set_result(wordle_word(guess), mr);
+            // Prepare feedback for the frontend
+            std::vector<int> fb;
+            for (auto ch : match_str) {
+                fb.emplace_back(ch - '0');
+            }
+            const auto& rem = game->remaining();
+            json res = {
+                {"feedback", std::vector<std::vector<int>>{fb}},
+                {"won", game->is_won()},
+                {"lost", game->is_lost()},
+                {"guesses", game->get_guesses()},
+                {"remaining", game->remaining().size()},
+                {"remaining_words", rem.to_string_vector(20) }
+            };
+            send_good_response(response, res);
+            return Rest::Route::Result::Ok;
+        } catch (const RequestException &exc) {
+            send_error_response(response, exc.what());
             return Rest::Route::Result::Ok;
         }
-        // Convert explore_state to a string for match_result
-        std::string match_str;
-        for (int v : explore_state) match_str += char('0' + v);
-        wordle_word::match_result mr(match_str);
-        game->set_result(wguess, mr);
-        // Prepare feedback for the frontend
-        std::vector<int> fb;
-        for (auto ch : match_str) fb.emplace_back(ch - '0');
-        // Prepare remaining words list
-        std::vector<std::string> rem_words;
-        const auto& rem = game->remaining();
-        json res = {
-            {"feedback", std::vector<std::vector<int>>{fb}},
-            {"won", game->is_won()},
-            {"lost", game->is_lost()},
-            {"guesses", game->get_guesses()},
-            {"remaining", game->remaining().size()},
-            {"remaining_words", rem.to_string_vector(20) }
-        };
-        if (game->is_lost()) {
-            res["the_word"] = game->get_current_word().str();
-        }
-        add_cors_headers(response);
-        response.send(Http::Code::Ok, res.dump(), MIME(Application, Json));
-        return Rest::Route::Result::Ok;
     });
-    router.post("/best", [&](const Rest::Request& req, Http::ResponseWriter response) {
-        json body;
+
+    /************************************************************************
+     * Handle /best endpoint
+     ***********************************************************************/
+    
+    router.post("/best", [&](const Rest::Request& req, Http::ResponseWriter response)
+    {
         try {
-            body = json::parse(req.body());
-        } catch (...) {
-            add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({"error":"Invalid JSON"})", MIME(Application, Json));
+            json body;
+            cwordle *game;
+            tie(body, game) = validate_request(req, {});
+            std::vector<std::string> words;
+            if (!(game->is_over() || game->size()==0)) {            
+                auto best_list = game->best(5);
+                for (const auto& r : best_list) {
+                    if (r.key) words.push_back(string(r.key->str()));
+                }
+            }
+            json res = { {"best", words} };
+            send_good_response(response, res);
+            return Rest::Route::Result::Ok;
+        } catch (const RequestException &exc) {
+            send_error_response(response, exc.what());
             return Rest::Route::Result::Ok;
         }
-        if (!body.is_object() || !body.count("game_id")) {
-            add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({"error":"Missing game_id"})", MIME(Application, Json));
-            return Rest::Route::Result::Ok;
-        }
-        string game_id = body["game_id"].get<std::string>();
-        cwordle* game = nullptr;
-        {
-            lock_guard<mutex> lock(games_mutex);
-            auto it = games.find(game_id);
-            if (it == games.end()) {
-                add_cors_headers(response);
-                response.send(Http::Code::Not_Found, R"({"error":"No such game"})", MIME(Application, Json));
-                return Rest::Route::Result::Ok;
-            }
-            game = it->second;
-        }
-        std::vector<std::string> words;
-        if (!(game->is_over() || game->size()==0)) {            
-            auto best_list = game->best(5);
-            for (const auto& r : best_list) {
-                if (r.key) words.push_back(string(r.key->str()));
-            }
-        }
-        json res = { {"best", words} };
-        add_cors_headers(response);
-        response.send(Http::Code::Ok, res.dump(), MIME(Application, Json));
-        return Rest::Route::Result::Ok;
     });
-    // Register catch-all OPTIONS route after specific routes
+        
+    /************************************************************************
+     * Handle /status endpoint
+     ***********************************************************************/
+    
+    router.get("/status", [&](const Rest::Request& req, Http::ResponseWriter response)
+    {
+        try {
+            json body;
+            cwordle *game;
+            tie(body, game) = validate_request(req, {});
+            std::vector<std::string> words;
+            if (!(game->is_over() || game->size()==0)) {            
+                auto best_list = game->best(5);
+                for (const auto& r : best_list) {
+                    if (r.key) words.push_back(string(r.key->str()));
+                }
+            }
+            json res = {
+                {"guesses", game->size()},
+                {"won", game->is_won()},
+                {"lost", game->is_lost()},
+                {"length", game->get_current_word().size()}
+            };
+            if (game->is_over()) {
+                res["answer"] = game->get_current_word().str();
+            }
+            if (game->is_lost()) {
+                res["the_word"] = game->get_current_word().str();
+            }
+            send_good_response(response, res);
+            return Rest::Route::Result::Ok;
+        } catch (const RequestException &exc) {
+            send_error_response(response, exc.what());
+            return Rest::Route::Result::Ok;
+        }
+    });
+
+    /************************************************************************
+     * Catch-all for unknown endpoints
+     ***********************************************************************/
+    
     router.options("/*", [&](const Rest::Request&, Http::ResponseWriter response) {
         add_cors_headers(response);
         response.send(Http::Code::No_Content);
         return Rest::Route::Result::Ok;
     });
-    router.get("/status", [&](const Rest::Request& req, Http::ResponseWriter response) {
-        cwordle *the_game = NULL;
-        std::string game_id = "";
-        auto opt = req.query().get("game_id");
-        if (opt.has_value()) game_id = *opt;
-        {
-            lock_guard<mutex> lock(games_mutex);
-            auto it = games.find(game_id);
-            if (it == games.end()) {
-                add_cors_headers(response);
-                response.send(Http::Code::Not_Found, R"({"error":"No such game"})", MIME(Application, Json));
-                return Rest::Route::Result::Ok;
-            }
-            the_game = it->second;
-        }
-        int word_length = the_game->get_current_word().size();
-        json res = {
-            {"guesses", the_game->size()},
-            {"won", the_game->is_won()},
-            {"lost", the_game->is_lost()},
-            {"length", word_length}
-        };
-        if (the_game->is_over()) {
-            res["answer"] = the_game->get_current_word().str();
-        }
-        if (the_game->is_lost()) {
-            res["the_word"] = the_game->get_current_word().str();
-        }
-        add_cors_headers(response);
-        response.send(Http::Code::Ok, res.dump(), MIME(Application, Json));
-        return Rest::Route::Result::Ok;
-    });
+
+    /************************************************************************
+     * Main loop
+     ***********************************************************************/
+    
     while (true) {
         try {
             auto server = std::make_unique<Http::Endpoint>(Address(Ipv4::any(), Port(18080)));
@@ -337,7 +323,8 @@ int main() {
             server->serve();
             break; // If serve() exits normally, break the loop
         } catch (const std::runtime_error& e) {
-            std::cerr << "[web_server] Failed to bind/start: " << e.what() << ". Retrying in 5 seconds..." << std::endl;
+            std::cerr << "[web_server] Failed to bind/start: " << e.what()
+                      << ". Retrying in 5 seconds..." << std::endl;
             std::this_thread::sleep_for(std::chrono::seconds(5));
         }
     }
