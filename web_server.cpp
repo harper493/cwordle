@@ -152,15 +152,87 @@ int main() {
         for (auto ch : mr.str()) {
             fb.emplace_back(lexical_cast<int>(string(1, ch)));
         }
+        // Prepare remaining words list
+        std::vector<std::string> rem_words;
+        const auto& rem = the_game->remaining();
+        size_t sz = rem.size();
+        size_t limit = std::min<size_t>(20, sz);
+        for (size_t i = 0; i < limit; ++i) {
+            rem_words.emplace_back(the_game->get_dictionary().get_string(rem[i]));
+        }
+        if (sz > 20) rem_words.push_back("...");
         json res = {
             {"feedback", fb},
             {"won", the_game->is_won()},
             {"lost", the_game->is_lost()},
             {"guesses", the_game->get_guesses()},
-            {"remaining", the_game->remaining().size()}
+            {"remaining", the_game->remaining().size()},
+            {"remaining_words", rem_words}
         };
         if (the_game->is_lost()) {
             res["the_word"] = the_game->get_current_word().str();
+        }
+        add_cors_headers(response);
+        response.send(Http::Code::Ok, res.dump(), MIME(Application, Json));
+        return Rest::Route::Result::Ok;
+    });
+    router.post("/explore", [&](const Rest::Request& req, Http::ResponseWriter response) {
+        json body;
+        try {
+            body = json::parse(req.body());
+        } catch (...) {
+            add_cors_headers(response);
+            response.send(Http::Code::Bad_Request, R"({\"error\":\"Invalid JSON\"})", MIME(Application, Json));
+            return Rest::Route::Result::Ok;
+        }
+        if (!body.is_object() || !body.count("game_id") || !body.count("guess") || !body.count("explore_state")) {
+            add_cors_headers(response);
+            response.send(Http::Code::Bad_Request, R"({\"error\":\"Missing fields\"})", MIME(Application, Json));
+            return Rest::Route::Result::Ok;
+        }
+        string game_id = body["game_id"].get<std::string>();
+        string guess = boost::algorithm::to_lower_copy(body["guess"].get<std::string>());
+        std::vector<int> explore_state = body["explore_state"].get<std::vector<int>>();
+        cwordle* game = nullptr;
+        {
+            lock_guard<mutex> lock(games_mutex);
+            auto it = games.find(game_id);
+            if (it == games.end()) {
+                add_cors_headers(response);
+                response.send(Http::Code::Not_Found, R"({\"error\":\"No such game\"})", MIME(Application, Json));
+                return Rest::Route::Result::Ok;
+            }
+            game = it->second;
+        }
+        // Call set_result with guess and explore_state
+        wordle_word wguess(guess);
+        // Convert explore_state to a string for match_result
+        std::string match_str;
+        for (int v : explore_state) match_str += char('0' + v);
+        wordle_word::match_result mr(match_str);
+        game->set_result(wguess, mr);
+        // Prepare feedback for the frontend
+        std::vector<int> fb;
+        for (auto ch : match_str) fb.emplace_back(ch - '0');
+        // Prepare remaining words list
+        std::vector<std::string> rem_words;
+        const auto& rem = game->remaining();
+        size_t sz = rem.size();
+        size_t limit = std::min<size_t>(20, sz);
+        for (size_t i = 0; i < limit; ++i) {
+            rem_words.emplace_back(game->get_dictionary().get_string(rem[i]));
+        }
+        if (sz > 20) rem_words.push_back("...");
+        json res = {
+            {"feedback", std::vector<std::vector<int>>{fb}},
+            {"won", game->is_won()},
+            {"lost", game->is_lost()},
+            {"guesses", game->get_guesses()},
+            {"remaining", game->remaining().size()},
+            {"remaining_words", rem_words}
+        };
+        if (game->is_lost()) {
+            res["the_word"] = game->get_current_word().str();
         }
         add_cors_headers(response);
         response.send(Http::Code::Ok, res.dump(), MIME(Application, Json));

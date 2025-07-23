@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './App.css';
 import { WordleBoard, Feedback } from './WordleBoard';
-import { startGame, submitGuess, getStatus, bestWords, reveal } from './api';
+import { startGame, submitGuess, getStatus, bestWords, reveal, explore } from './api';
 
 const QWERTY_ROWS = [
   ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -94,6 +94,10 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [theWord, setTheWord] = useState<string | null>(null);
   const [showRemaining, setShowRemaining] = useState(false);
+  const [showRemainingWords, setShowRemainingWords] = useState(false);
+  const [remainingWords, setRemainingWords] = useState<string[]>([]);
+  const [exploreMode, setExploreMode] = useState(false);
+  const [exploreCellStates, setExploreCellStates] = useState<number[][]>([]);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [showBest, setShowBest] = useState(false);
   const [bestList, setBestList] = useState<string[]>([]);
@@ -130,6 +134,26 @@ function App() {
     if (inputRef.current) inputRef.current.focus();
   }, [guesses.length, won, lost]);
 
+  // Reset explore cell states on new game, guess, or when explore mode is turned off
+  useEffect(() => {
+    setExploreCellStates([]);
+  }, [gameId, guesses.length, exploreMode]);
+
+  // Handler to cycle cell state in explore mode
+  const handleExploreCellClick = (rowIdx: number, colIdx: number) => {
+    if (!exploreMode) return;
+    setExploreCellStates(prev => {
+      const newStates = prev.map(arr => arr.slice());
+      // Ensure the row exists
+      while (newStates.length <= rowIdx) newStates.push([]);
+      // Ensure the col exists
+      while (newStates[rowIdx].length <= colIdx) newStates[rowIdx].push(0);
+      // Cycle: 0 (normal) -> 1 (orange) -> 2 (green) -> 0
+      newStates[rowIdx][colIdx] = ((newStates[rowIdx][colIdx] || 0) + 1) % 3;
+      return newStates;
+    });
+  };
+
   // Add a click handler to the board area to refocus input
   const handleBoardClick = () => {
     if (inputRef.current) inputRef.current.focus();
@@ -143,11 +167,17 @@ function App() {
     if (e) e.preventDefault();
     if (!gameId || input.length !== wordLength || won || lost) return;
     try {
-      const res = await submitGuess(gameId, input);
+      let res: any;
+      if (exploreMode) {
+        // Send only the explore state for the current input row
+        const exploreState = (exploreCellStates[guesses.length] || []).slice(0, wordLength);
+        res = await explore(gameId, input, exploreState);
+      } else {
+        res = await submitGuess(gameId, input);
+      }
       console.log("submitGuess response (full):", JSON.stringify(res, null, 2));
       console.log("submitGuess response:", res);
       setGuesses(res.guesses);
-      // Patch: append new feedback to feedbacks array
       setFeedback(prev => {
         let newFeedback = res.feedback;
         if (newFeedback.length > 0 && typeof newFeedback[0] === 'number') {
@@ -160,6 +190,7 @@ function App() {
       setLost(res.lost);
       if (res.lost && res.the_word) setTheWord(res.the_word);
       if (typeof res.remaining === 'number') setRemaining(res.remaining);
+      if (Array.isArray(res.remaining_words)) setRemainingWords(res.remaining_words);
     } catch (err) {
       // Optionally handle error
     }
@@ -223,10 +254,27 @@ function App() {
           <QwertyKeyboard guesses={guesses} feedback={feedback} onKeyClick={handleKeyClick} />
           <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start' }}>
             <div style={{ flex: '0 1 auto', alignSelf: 'flex-start' }} onClick={handleBoardClick}>
-              <WordleBoard guesses={guesses} feedback={feedback} wordLength={wordLength} input={input} />
+              <WordleBoard
+                guesses={guesses}
+                feedback={feedback}
+                wordLength={wordLength}
+                input={input}
+                exploreMode={exploreMode}
+                exploreCellStates={exploreCellStates}
+                onExploreCellClick={handleExploreCellClick}
+              />
             </div>
             <div style={{ flex: '0 0 auto', marginLeft: 24, marginTop: 0, alignSelf: 'flex-start', textAlign: 'left' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <label style={{ fontSize: '0.4em', marginRight: 8, marginBottom: 4 }}>
+                  <input
+                    type="checkbox"
+                    checked={exploreMode}
+                    onChange={e => setExploreMode(e.target.checked)}
+                    style={{ marginRight: 4 }}
+                  />
+                  Explore mode
+                </label>
                 <label style={{ fontSize: '0.4em', marginRight: 8, marginBottom: 4 }}>
                   <input
                     type="checkbox"
@@ -240,6 +288,22 @@ function App() {
                   <div style={{ color: 'deepskyblue', fontWeight: 'bold', fontSize: '0.4em', marginTop: 6, marginBottom: 4 }}>
                     Remaining: {remaining}
                   </div>
+                )}
+                <label style={{ fontSize: '0.4em', marginRight: 8, marginBottom: 4 }}>
+                  <input
+                    type="checkbox"
+                    checked={showRemainingWords}
+                    onChange={e => setShowRemainingWords(e.target.checked)}
+                    style={{ marginRight: 4 }}
+                  />
+                  Show remaining words
+                </label>
+                {showRemainingWords && remainingWords.length > 0 && (
+                  <ul style={{ fontSize: '0.4em', color: 'deepskyblue', margin: '8px 0 0 0', padding: 0, listStyle: 'none', textAlign: 'left' }}>
+                    {remainingWords.map((word, i) => (
+                      <li key={i}>{word}</li>
+                    ))}
+                  </ul>
                 )}
                 <label style={{ fontSize: '0.4em', marginRight: 8, marginBottom: 4 }}>
                   <input

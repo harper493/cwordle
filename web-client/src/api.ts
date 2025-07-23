@@ -66,4 +66,14 @@ export async function reveal(gameId: string): Promise<string> {
   if (!res.ok) throw new Error('Failed to reveal word');
   const data = await res.json();
   return data.word || data.the_word || data.answer;
+}
+
+export async function explore(gameId: string, guess: string, exploreState: number[]): Promise<any> {
+  const res = await fetch(`${API_URL}/explore`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ game_id: gameId, guess, explore_state: exploreState }),
+  });
+  if (!res.ok) throw new Error('Failed to submit explore guess');
+  return res.json();
 } 

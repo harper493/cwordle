@@ -8,6 +8,9 @@ interface WordleBoardProps {
   wordLength: number;
   maxGuesses?: number;
   input?: string;
+  exploreMode?: boolean;
+  exploreCellStates?: number[][];
+  onExploreCellClick?: (rowIdx: number, colIdx: number) => void;
 }
 
 const getCellStyle = (fb: Feedback): React.CSSProperties => {
@@ -18,7 +21,15 @@ const getCellStyle = (fb: Feedback): React.CSSProperties => {
   }
 };
 
-export const WordleBoard: React.FC<WordleBoardProps> = ({ guesses, feedback, wordLength, maxGuesses = 6, input }) => {
+const getExploreCellStyle = (state: number): React.CSSProperties => {
+  switch (state) {
+    case 2: return { background: '#6aaa64', color: 'white' }; // green
+    case 1: return { background: '#c9b458', color: 'white' }; // orange/yellow
+    case 0: default: return { background: '#d3d6da', color: 'black' }; // normal
+  }
+};
+
+export const WordleBoard: React.FC<WordleBoardProps> = ({ guesses, feedback, wordLength, maxGuesses = 6, input, exploreMode, exploreCellStates, onExploreCellClick }) => {
   const rows: React.ReactNode[] = [];
   let inputShown = false;
   for (let i = 0; i < maxGuesses; ++i) {
@@ -35,14 +46,20 @@ export const WordleBoard: React.FC<WordleBoardProps> = ({ guesses, feedback, wor
     const cells: React.ReactNode[] = [];
     for (let j = 0; j < wordLength; ++j) {
       const letter = guess[j] || '';
-      // Only use feedback style if this is not the input row and feedback exists
-      const style = (fb && fb[j] !== undefined && !isInputRow)
-        ? getCellStyle(fb[j])
-        : { background: '#d3d6da', color: 'black' };
-      // Debug log for diagnosis
-      console.log(`Row ${i}, Col ${j}, isInputRow: ${isInputRow}, fb[j]:`, fb ? fb[j] : undefined, 'style:', style);
+      let style: React.CSSProperties;
+      if (exploreMode && exploreCellStates && exploreCellStates[i] && exploreCellStates[i][j] !== undefined) {
+        style = getExploreCellStyle(exploreCellStates[i][j]);
+      } else {
+        style = (fb && fb[j] !== undefined && !isInputRow)
+          ? getCellStyle(fb[j])
+          : { background: '#d3d6da', color: 'black' };
+      }
       cells.push(
-        <td key={j} style={{ ...style, width: 40, height: 40, textAlign: 'center', fontSize: 24, border: '2px solid #888' }}>
+        <td
+          key={j}
+          style={{ ...style, width: 40, height: 40, textAlign: 'center', fontSize: 24, border: '2px solid #888', cursor: exploreMode ? 'pointer' : 'default' }}
+          onClick={exploreMode && onExploreCellClick ? () => onExploreCellClick(i, j) : undefined}
+        >
           {letter.toUpperCase()}
         </td>
       );
