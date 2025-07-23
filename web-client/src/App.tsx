@@ -39,6 +39,57 @@ function getEliminatedLetters(guesses: string[], feedback: Feedback[][]): Set<st
   return eliminated;
 }
 
+const HelpIcon: React.FC<{ message: string }> = ({ message }) => {
+  const [show, setShow] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-block', marginLeft: 6 }}>
+      <span
+        style={{
+          display: 'inline-block',
+          width: 18,
+          height: 18,
+          borderRadius: '50%',
+          background: '#e0e0e0',
+          color: '#333',
+          textAlign: 'center',
+          fontWeight: 'bold',
+          fontSize: 14,
+          lineHeight: '18px',
+          cursor: 'pointer',
+          border: '1px solid #bbb',
+        }}
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+      >
+        i
+      </span>
+      {show && (
+        <div
+          style={{
+            position: 'absolute',
+            left: '110%',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'white',
+            color: '#222',
+            border: '1px solid #bbb',
+            borderRadius: 6,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            padding: '8px 12px',
+            fontSize: '0.85em',
+            zIndex: 100,
+            minWidth: 160,
+            maxWidth: 260,
+            whiteSpace: 'normal',
+          }}
+        >
+          {message}
+        </div>
+      )}
+    </span>
+  );
+};
+
 const QwertyKeyboard: React.FC<{ guesses: string[]; feedback: Feedback[][]; onKeyClick: (letter: string) => void }> = ({ guesses, feedback, onKeyClick }) => {
   const eliminated = getEliminatedLetters(guesses, feedback);
   return (
@@ -290,6 +341,7 @@ function App() {
                     style={{ marginRight: 4 }}
                   />
                   Explore mode
+                  <HelpIcon message="Look for solution to a puzzle. Click on a cell to change its color and the remaining word list shows you possible solutions." />
                 </label>
                 <label style={{ fontSize: '0.4em', marginRight: 8, marginBottom: 4 }}>
                   <input
@@ -299,6 +351,7 @@ function App() {
                     style={{ marginRight: 4 }}
                   />
                   Show remaining count
+                  <HelpIcon message="Displays the number of possible remaining words." />
                 </label>
                 {showRemaining && typeof remaining === 'number' && (
                   <div style={{ color: 'deepskyblue', fontWeight: 'bold', fontSize: '0.4em', marginTop: 6, marginBottom: 4 }}>
@@ -313,6 +366,7 @@ function App() {
                     style={{ marginRight: 4 }}
                   />
                   Show remaining words
+                  <HelpIcon message="Displays a list of possible remaining words." />
                 </label>
                 {showRemainingWords && remainingWords.length > 0 && (
                   <div style={{
@@ -341,6 +395,7 @@ function App() {
                     style={{ marginRight: 4 }}
                   />
                   Show best words
+                  <HelpIcon message="Displays the best next guesses." />
                 </label>
                 {showBest && bestList.length > 0 && (typeof remaining !== 'number' || remaining > 1) && (
                   <ul style={{ fontSize: '0.4em', color: 'gold', margin: '8px 0 0 0', padding: 0, listStyle: 'none', textAlign: 'left' }}>
