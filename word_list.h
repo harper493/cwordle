@@ -29,6 +29,7 @@ public:
     word_list filter_pred(function<bool(const string_view &w)> pred) const;
     word_list sorted() const;
     float entropy(const wordle_word &w) const;
+    string str(size_t length=0) const;
 private:
     void fill() const;
     void insert(dictionary::word_index_t word)

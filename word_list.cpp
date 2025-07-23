@@ -166,4 +166,26 @@ float word_list::entropy(const wordle_word &target) const
     return result;
 }
 
+/************************************************************************
+ * str - return a space-separated list of the words in the list.
+ * Truncate to the given length if non-zero.
+ ***********************************************************************/
+
+string word_list::str(size_t length) const
+{
+    size_t count = 0;
+    string result;
+    for (const auto &idx : *this) {
+        if (count >0) {
+            result += " ";
+        }
+        if (length > 0 && count >= length) {
+            result += "...";
+            break;
+        }
+        result += my_dict[idx].str();
+        ++count;
+    }
+    return result;
+}
 

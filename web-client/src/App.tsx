@@ -170,7 +170,8 @@ function App() {
       let res: any;
       if (exploreMode) {
         // Send only the explore state for the current input row
-        const exploreState = (exploreCellStates[guesses.length] || []).slice(0, wordLength);
+        let exploreState = (exploreCellStates[guesses.length] || []).slice(0, wordLength);
+        while (exploreState.length < wordLength) exploreState.push(0);
         res = await explore(gameId, input, exploreState);
       } else {
         res = await submitGuess(gameId, input);
