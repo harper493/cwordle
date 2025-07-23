@@ -300,11 +300,23 @@ function App() {
                   Show remaining words
                 </label>
                 {showRemainingWords && remainingWords.length > 0 && (
-                  <ul style={{ fontSize: '0.4em', color: 'deepskyblue', margin: '8px 0 0 0', padding: 0, listStyle: 'none', textAlign: 'left' }}>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr 1fr',
+                    gap: '2px 12px',
+                    fontSize: '0.4em',
+                    color: 'deepskyblue',
+                    margin: '8px 0 0 0',
+                    padding: 0,
+                    textAlign: 'left',
+                    listStyle: 'none',
+                    width: '100%',
+                    maxWidth: 240,
+                  }}>
                     {remainingWords.map((word, i) => (
-                      <li key={i}>{word}</li>
+                      <div key={i} style={{ padding: '0 2px' }}>{word}</div>
                     ))}
-                  </ul>
+                  </div>
                 )}
                 <label style={{ fontSize: '0.4em', marginRight: 8, marginBottom: 4 }}>
                   <input
