@@ -16,14 +16,6 @@ using namespace Pistache;
 using json = nlohmann::json;
 using namespace std;
 
-
-struct GameState {
-    string answer;
-    vector<string> guesses;
-    bool won = false;
-    bool lost = false;
-};
-
 unordered_map<string, cwordle*> games;
 mutex games_mutex;
 
@@ -38,25 +30,73 @@ string generate_game_id() {
     return id;
 }
 
-string pick_random_word() {
-    // Stub: always return "CRANE"
-    return "CRANE";
-}
-
-vector<int> check_guess(const string& guess, const string& answer) {
-    // 0: gray, 1: yellow, 2: green
-    vector<int> feedback(guess.size(), 0);
-    for (size_t i = 0; i < guess.size(); ++i) {
-        if (guess[i] == answer[i]) feedback[i] = 2;
-        else if (answer.find(guess[i]) != string::npos) feedback[i] = 1;
-    }
-    return feedback;
-}
-
 void add_cors_headers(Http::ResponseWriter& response) {
     response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
     response.headers().add<Http::Header::AccessControlAllowMethods>("POST, GET, OPTIONS");
     response.headers().add<Http::Header::AccessControlAllowHeaders>("Content-Type");
+}
+
+class RequestException : public std::exception
+{
+private:
+    string message;
+public:
+    RequestException(const string_view &msg)
+        : message(msg) { };
+    const char *what() const noexcept
+    {
+        return message.c_str();
+    }
+};
+
+/************************************************************************
+ * validate_request - ensure that the request is valid, extract the
+ * game_id and find the corresponding game, also check that oth
+ * required fields are present. Throw a ReqestException if there is an
+ * error, otherwise return the JSON body and the game pointer.
+ ***********************************************************************/
+    
+pair<json,cwordle*> validate_request(const Rest::Request& req, const vector<string> &required_content)
+{
+    json body;
+    cwordle *game = NULL;
+    try {
+        body = json::parse(req.body());
+    } catch (...) {
+        throw RequestException("Invalid JSON");
+    }
+    if (!body.is_object() || !body.count("game_id")) {
+        throw RequestException("Missing fields");
+    }
+    for (const string &f : required_content) {
+        if (!body.count(f)) {
+            throw RequestException("Missing fields");
+        }
+    }
+    string game_id = body["game_id"].get<std::string>();
+    {
+        lock_guard<mutex> lock(games_mutex);
+        auto it = games.find(game_id);
+        if (it == games.end()) {
+            throw RequestException("No such game");
+        }
+        game = it->second;
+    }
+    return make_pair(body, game);
+}
+
+void send_good_response(Http::ResponseWriter &response, const json &res)
+{
+    add_cors_headers(response);
+    response.send(Http::Code::Ok, res.dump(), MIME(Application, Json));
+}
+
+void send_error_response(Http::ResponseWriter &response, const string &err)
+{
+    add_cors_headers(response);
+    response.send(Http::Code::Bad_Request,
+                  "{\"error\":\"" + err + "\"}",
+                  MIME(Application, Json));
 }
 
 int main() {
@@ -64,7 +104,6 @@ int main() {
     const char* argv[] = {"cwordle"};
     do_options(1, (char**)argv);
     dictionary::init();
-    cwordle *the_game = NULL;
     router.post("/reveal", [&](const Rest::Request& req, Http::ResponseWriter response) {
         json body;
         try {
@@ -97,6 +136,7 @@ int main() {
         return Rest::Route::Result::Ok;
     });
     router.post("/start", [&](const Rest::Request&, Http::ResponseWriter response) {
+        cwordle *the_game = NULL;
         string game_id = generate_game_id();
         {
             lock_guard<mutex> lock(games_mutex);
@@ -109,78 +149,46 @@ int main() {
         response.send(Http::Code::Ok, res.dump(), MIME(Application, Json));
         return Rest::Route::Result::Ok;
     });
-    router.post("/guess", [&](const Rest::Request& req, Http::ResponseWriter response) {
-        if (!the_game) {
-            json res = { {"error", "No game in progress"} };
-            add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, res.dump(), MIME(Application, Json));
-            return Rest::Route::Result::Ok;
-        }
-        json body;
+    router.post("/guess", [&](const Rest::Request& req, Http::ResponseWriter response)
+    {
         try {
-            body = json::parse(req.body());
-        } catch (...) {
-            add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({"error":"Invalid JSON"})", MIME(Application, Json));
-            return Rest::Route::Result::Ok;
-        }
-        if (!body.is_object() || !body.count("game_id") || !body.count("guess")) {
-            add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({"error":"Invalid request"})", MIME(Application, Json));
-            return Rest::Route::Result::Ok;
-        }
-        string game_id = body["game_id"].get<std::string>();
-        string guess = boost::algorithm::to_lower_copy(body["guess"].get<std::string>());
-        {
-            lock_guard<mutex> lock(games_mutex);
-            auto it = games.find(game_id);
-            if (it == games.end()) {
-                add_cors_headers(response);
-                response.send(Http::Code::Not_Found, R"({"error":"No such game"})", MIME(Application, Json));
-                return Rest::Route::Result::Ok;
+            json body;
+            cwordle *the_game;
+            tie(body, the_game) = validate_request(req, {"guess"});
+            string guess = boost::algorithm::to_lower_copy(body["guess"].get<std::string>());
+            if (the_game->is_over()) {
+                throw RequestException("Game over");
             }
-            the_game = it->second;
-        }
-        if (the_game->is_over()) {
-            add_cors_headers(response);
-            response.send(Http::Code::Ok, R"({"error":"Game over"})", MIME(Application, Json));
+            wordle_word wguess(guess); // Construct wordle_word from guess string
+            // Validate the guess
+            if (!the_game->is_valid_word(guess)) {
+                throw RequestException("Invalid word");
+            }
+            auto mr = the_game->try_word(wguess);
+            vector<int> fb;
+            for (auto ch : mr.str()) {
+                fb.emplace_back(lexical_cast<int>(string(1, ch)));
+            }
+            // Prepare remaining words list
+            std::vector<std::string> rem_words;
+            const auto& rem = the_game->remaining();
+            json res = {
+                {"feedback", fb},
+                {"won", the_game->is_won()},
+                {"lost", the_game->is_lost()},
+                {"guesses", the_game->get_guesses()},
+                {"remaining", the_game->remaining().size()},
+                {"remaining_words", rem.to_string_vector(20)}
+            };
+            if (the_game->is_lost()) {
+                res["the_word"] = the_game->get_current_word().str();
+            }
+            send_good_response(response, res);
+            return Rest::Route::Result::Ok;
+        } catch (const RequestException &exc) {
+            send_error_response(response, exc.what());
             return Rest::Route::Result::Ok;
         }
-        wordle_word wguess(guess); // Construct wordle_word from guess string
-        // Validate the guess
-        if (!the_game->is_valid_word(guess)) {
-            add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({"error":"Invalid word"})", MIME(Application, Json));
-            return Rest::Route::Result::Ok;
-        }
-        auto mr = the_game->try_word(wguess);
-        vector<int> fb;
-        for (auto ch : mr.str()) {
-            fb.emplace_back(lexical_cast<int>(string(1, ch)));
-        }
-        // Prepare remaining words list
-        std::vector<std::string> rem_words;
-        const auto& rem = the_game->remaining();
-        size_t sz = rem.size();
-        size_t limit = std::min<size_t>(20, sz);
-        for (size_t i = 0; i < limit; ++i) {
-            rem_words.emplace_back(the_game->get_dictionary().get_string(rem[i]));
-        }
-        if (sz > 20) rem_words.push_back("...");
-        json res = {
-            {"feedback", fb},
-            {"won", the_game->is_won()},
-            {"lost", the_game->is_lost()},
-            {"guesses", the_game->get_guesses()},
-            {"remaining", the_game->remaining().size()},
-            {"remaining_words", rem_words}
-        };
-        if (the_game->is_lost()) {
-            res["the_word"] = the_game->get_current_word().str();
-        }
-        add_cors_headers(response);
-        response.send(Http::Code::Ok, res.dump(), MIME(Application, Json));
-        return Rest::Route::Result::Ok;
     });
     router.post("/explore", [&](const Rest::Request& req, Http::ResponseWriter response) {
         json body;
@@ -289,12 +297,7 @@ int main() {
         return Rest::Route::Result::Ok;
     });
     router.get("/status", [&](const Rest::Request& req, Http::ResponseWriter response) {
-        if (!the_game) {
-            json res = { {"error", "No game in progress"} };
-            add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, res.dump(), MIME(Application, Json));
-            return Rest::Route::Result::Ok;
-        }
+        cwordle *the_game = NULL;
         std::string game_id = "";
         auto opt = req.query().get("game_id");
         if (opt.has_value()) game_id = *opt;
