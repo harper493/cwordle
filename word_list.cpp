@@ -74,6 +74,31 @@ word_list word_list::filter_exact(const wordle_word::match_target &mt) const
 }
 
 /************************************************************************
+ * filter_exact - filter the list to just words which satisfy the given
+ * predicate
+ ***********************************************************************/
+
+word_list word_list::filter_pred(function<bool(const string_view &w)> pred) const
+{
+    word_list result(my_dict);
+    if (unfilled) {
+        for (size_t i : irange(0ul, my_dict.size())) {
+            if (pred(my_dict[i].str())) {
+                result.insert(i);
+            }
+        }
+    } else {
+        result.unfilled = false;
+        for (dictionary::word_index_t i : *this) {
+            if (pred(my_dict[i].str())) {
+                result.insert(i);
+            }
+        }
+    }
+    return result;
+}
+
+/************************************************************************
  * sorted - return a word_list in which the words have been
  * sorted into alphabetical order
  ***********************************************************************/

@@ -32,6 +32,7 @@ using std::bind;
 using std::mutex;
 using std::set;
 using std::unique_ptr;
+using std::function;
 using boost::irange;
 using boost::lexical_cast;
 namespace algorithm = boost::algorithm;

@@ -13,10 +13,12 @@ public:
     typedef U32 word_index_t;
     typedef map<string, word_index_t> word_map_t;
     typedef vector<word_index_t> word_list_t;
+    typedef std::set<word_index_t> word_set_t;
 private:
     words_t words;
     word_map_t word_map;
     word_list_t allowed_words;
+    word_set_t allowed_word_set;
 public:
     size_t size() const
     {
@@ -43,30 +45,13 @@ public:
     optional<word_index_t> find(const string_view &w) const;
     optional<const wordle_word*> find_word(const string_view &w) const;
     string_view get_allowed() const;
-#if 0
-    template<class RANGE>
-    void load(const RANGE &r)
-    {
-        for (const auto &w : r) {
-            insert(w);
-        }
-    }
-#endif
+    bool is_allowed(const string_view &w) const;
     void load(const string_view &s);
     bool load_file(const string &filename)
     {
         return load_file_base(filename,
                        [&](const string_view &w){ return insert(w, 0); });
     }
-#if 0
-    template<class RANGE>
-    void load_allowed(const RANGE &r)
-    {
-        for (const auto &w : r) {
-            insert_allowed(w);
-        }
-    }
-#endif
     void load_allowed(const string_view &s);
     bool load_file_allowed(const string &filename)
     {

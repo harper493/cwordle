@@ -100,6 +100,7 @@ bool dictionary::insert_allowed(const string_view &w)
         i = find(w);
     }
     allowed_words.push_back(i.value());
+    allowed_word_set.insert(i.value());
     return true;
 }
 
@@ -163,4 +164,14 @@ string_view dictionary::get_allowed() const
     } else {
         return get_string(allowed_words[random::get_int(allowed_words.size())]);
     }
+}
+
+/************************************************************************
+ * is_allowed - return true iff this word is in the allowed word set
+ ***********************************************************************/
+
+bool dictionary::is_allowed(const string_view &w) const
+{
+    auto i = find(w);
+    return i && (allowed_word_set.find(i.value()) != allowed_word_set.end());
 }

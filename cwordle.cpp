@@ -89,9 +89,10 @@ void cwordle::new_word()
  * remaining - list remaining usable words
  ***********************************************************************/
 
-const word_list &cwordle::remaining() const
+const word_list cwordle::remaining() const
 {
-    return word_lists.empty() ? all_my_words : word_lists.back();
+    return (word_lists.empty() ? all_my_words : word_lists.back())
+        .filter_pred([&](const string_view &w){ return my_dict.is_allowed(w); });
 }
 
 /************************************************************************
