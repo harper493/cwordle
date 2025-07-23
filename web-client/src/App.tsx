@@ -214,6 +214,13 @@ function App() {
 
   const handleReveal = async () => {
     if (!gameId) return;
+    if (exploreMode) {
+      // In explore mode, only allow reveal if exactly one remaining word
+      if (remaining === 1 && remainingWords.length > 0) {
+        setTheWord(remainingWords[0]);
+      }
+      return;
+    }
     try {
       const word = await reveal(gameId);
       setTheWord(word);
@@ -362,7 +369,11 @@ function App() {
             type="button"
             onClick={handleReveal}
             style={buttonStyle}
-            disabled={won || lost || !!theWord}
+            disabled={
+              exploreMode
+                ? (remaining !== 1 || !!theWord)
+                : (won || lost || !!theWord)
+            }
           >
             Reveal
           </button>
