@@ -69,6 +69,10 @@ public:
     {
         return is_won() || is_lost();
     }
+    bool is_valid_word(const string_view &w) const
+    {
+        return (bool)my_dict.find(w);
+    }
     vector<string> get_guesses() const
     {
         vector<string> result;

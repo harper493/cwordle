@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, ReactNode } from 'react';
 import './App.css';
 import { WordleBoard, Feedback } from './WordleBoard';
 import { startGame, submitGuess, getStatus, bestWords, reveal, explore } from './api';
@@ -91,7 +91,7 @@ function App() {
   const [input, setInput] = useState('');
   const [won, setWon] = useState(false);
   const [lost, setLost] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReactNode>(null);
   const [theWord, setTheWord] = useState<string | null>(null);
   const [showRemaining, setShowRemaining] = useState(false);
   const [showRemainingWords, setShowRemainingWords] = useState(false);
@@ -161,6 +161,7 @@ function App() {
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value.toUpperCase());
+    setError(null);
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -168,8 +169,8 @@ function App() {
     if (!gameId || input.length !== wordLength || won || lost) return;
     try {
       let res: any;
+      setError(null);
       if (exploreMode) {
-        // Send only the explore state for the current input row
         let exploreState = (exploreCellStates[guesses.length] || []).slice(0, wordLength);
         while (exploreState.length < wordLength) exploreState.push(0);
         res = await explore(gameId, input, exploreState);
@@ -190,8 +191,21 @@ function App() {
       if (res.lost && res.the_word) setTheWord(res.the_word);
       if (typeof res.remaining === 'number') setRemaining(res.remaining);
       if (Array.isArray(res.remaining_words)) setRemainingWords(res.remaining_words);
-    } catch (err) {
-      // Optionally handle error
+    } catch (err: any) {
+      setInput('');
+      let msg = '';
+      if (err instanceof Error && err.message) {
+        msg = err.message;
+      } else if (typeof err === 'string') {
+        msg = err;
+      } else if (err && typeof err === 'object' && 'message' in err) {
+        msg = String(err.message);
+      }
+      if (msg.toLowerCase().includes('invalid word')) {
+        setError(<span style={{ fontSize: '0.7em' }}>Not a valid word: <b>{input}</b></span>);
+      } else {
+        setError('Failed to submit guess');
+      }
     }
   };
 
@@ -342,6 +356,7 @@ function App() {
         {won && <div style={{ color: 'lightgreen', fontWeight: 'bold' }}>You won!</div>}
         {lost && <div style={{ color: 'salmon', fontWeight: 'bold' }}>You lost!</div>}
         {theWord && <div style={{ color: 'orange', fontWeight: 'bold' }}>The word was: {theWord}</div>}
+        {error && <div style={{ color: 'red' }}>{error}</div>}
         {/* Remove the visible input and word length display. Only keep the hidden input for keyboard capture. */}
         <div style={{ height: 0, overflow: 'hidden' }}>
           <input
@@ -391,7 +406,6 @@ function App() {
             Reveal
           </button>
         </div>
-        {error && <div style={{ color: 'red' }}>{error}</div>}
       </header>
     </div>
   );

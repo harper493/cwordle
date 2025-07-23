@@ -35,9 +35,18 @@ export async function submitGuess(gameId: string, guess: string): Promise<any> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ game_id: gameId, guess }),
   });
-  if (!res.ok) throw new Error('Failed to submit guess');
-  const data = await res.json();
-  return data;
+  if (!res.ok) {
+    let errMsg = 'Failed to submit guess';
+    try {
+      const text = await res.text();
+     const data = JSON.parse(text);
+      if (data && data.error) errMsg = data.error;
+    } catch {
+      // ignore
+    }
+    throw new Error(errMsg);
+  }
+  return res.json();
 }
 
 export async function getStatus(gameId: string): Promise<StatusResponse> {
@@ -74,6 +83,16 @@ export async function explore(gameId: string, guess: string, exploreState: numbe
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ game_id: gameId, guess, explore_state: exploreState }),
   });
-  if (!res.ok) throw new Error('Failed to submit explore guess');
+  if (!res.ok) {
+    let errMsg = 'Failed to submit explore guess';
+    try {
+      const text = await res.text();
+      const data = JSON.parse(text);
+      if (data && data.error) errMsg = data.error;
+    } catch {
+      // ignore
+    }
+    throw new Error(errMsg);
+  }
   return res.json();
 } 

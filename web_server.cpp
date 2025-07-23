@@ -71,12 +71,12 @@ int main() {
             body = json::parse(req.body());
         } catch (...) {
             add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({\"error\":\"Invalid JSON\"})", MIME(Application, Json));
+            response.send(Http::Code::Bad_Request, R"({"error":"Invalid JSON"})", MIME(Application, Json));
             return Rest::Route::Result::Ok;
         }
         if (!body.is_object() || !body.count("game_id")) {
             add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({\"error\":\"Missing game_id\"})", MIME(Application, Json));
+            response.send(Http::Code::Bad_Request, R"({"error":"Missing game_id"})", MIME(Application, Json));
             return Rest::Route::Result::Ok;
         }
         string game_id = body["game_id"].get<std::string>();
@@ -86,7 +86,7 @@ int main() {
             auto it = games.find(game_id);
             if (it == games.end()) {
                 add_cors_headers(response);
-                response.send(Http::Code::Not_Found, R"({\"error\":\"No such game\"})", MIME(Application, Json));
+                response.send(Http::Code::Not_Found, R"({"error":"No such game"})", MIME(Application, Json));
                 return Rest::Route::Result::Ok;
             }
             game = it->second;
@@ -121,12 +121,12 @@ int main() {
             body = json::parse(req.body());
         } catch (...) {
             add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({\"error\":\"Invalid JSON\"})", MIME(Application, Json));
+            response.send(Http::Code::Bad_Request, R"({"error":"Invalid JSON"})", MIME(Application, Json));
             return Rest::Route::Result::Ok;
         }
         if (!body.is_object() || !body.count("game_id") || !body.count("guess")) {
             add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({\"error\":\"Invalid request\"})", MIME(Application, Json));
+            response.send(Http::Code::Bad_Request, R"({"error":"Invalid request"})", MIME(Application, Json));
             return Rest::Route::Result::Ok;
         }
         string game_id = body["game_id"].get<std::string>();
@@ -136,17 +136,23 @@ int main() {
             auto it = games.find(game_id);
             if (it == games.end()) {
                 add_cors_headers(response);
-                response.send(Http::Code::Not_Found, R"({\"error\":\"No such game\"})", MIME(Application, Json));
+                response.send(Http::Code::Not_Found, R"({"error":"No such game"})", MIME(Application, Json));
                 return Rest::Route::Result::Ok;
             }
             the_game = it->second;
         }
         if (the_game->is_over()) {
             add_cors_headers(response);
-            response.send(Http::Code::Ok, R"({\"error\":\"Game over\"})", MIME(Application, Json));
+            response.send(Http::Code::Ok, R"({"error":"Game over"})", MIME(Application, Json));
             return Rest::Route::Result::Ok;
         }
         wordle_word wguess(guess); // Construct wordle_word from guess string
+        // Validate the guess
+        if (!the_game->is_valid_word(guess)) {
+            add_cors_headers(response);
+            response.send(Http::Code::Bad_Request, R"({"error":"Invalid word"})", MIME(Application, Json));
+            return Rest::Route::Result::Ok;
+        }
         auto mr = the_game->try_word(wguess);
         vector<int> fb;
         for (auto ch : mr.str()) {
@@ -182,12 +188,12 @@ int main() {
             body = json::parse(req.body());
         } catch (...) {
             add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({\"error\":\"Invalid JSON\"})", MIME(Application, Json));
+            response.send(Http::Code::Bad_Request, R"({"error":"Invalid JSON"})", MIME(Application, Json));
             return Rest::Route::Result::Ok;
         }
         if (!body.is_object() || !body.count("game_id") || !body.count("guess") || !body.count("explore_state")) {
             add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({\"error\":\"Missing fields\"})", MIME(Application, Json));
+            response.send(Http::Code::Bad_Request, R"({"error":"Missing fields"})", MIME(Application, Json));
             return Rest::Route::Result::Ok;
         }
         string game_id = body["game_id"].get<std::string>();
@@ -199,13 +205,19 @@ int main() {
             auto it = games.find(game_id);
             if (it == games.end()) {
                 add_cors_headers(response);
-                response.send(Http::Code::Not_Found, R"({\"error\":\"No such game\"})", MIME(Application, Json));
+                response.send(Http::Code::Not_Found, R"({"error":"No such game"})", MIME(Application, Json));
                 return Rest::Route::Result::Ok;
             }
             game = it->second;
         }
         // Call set_result with guess and explore_state
         wordle_word wguess(guess);
+        // Validate the guess
+        if (!game->is_valid_word(guess)) {
+            add_cors_headers(response);
+            response.send(Http::Code::Bad_Request, R"({"error":"Invalid word"})", MIME(Application, Json));
+            return Rest::Route::Result::Ok;
+        }
         // Convert explore_state to a string for match_result
         std::string match_str;
         for (int v : explore_state) match_str += char('0' + v);
@@ -238,12 +250,12 @@ int main() {
             body = json::parse(req.body());
         } catch (...) {
             add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({\"error\":\"Invalid JSON\"})", MIME(Application, Json));
+            response.send(Http::Code::Bad_Request, R"({"error":"Invalid JSON"})", MIME(Application, Json));
             return Rest::Route::Result::Ok;
         }
         if (!body.is_object() || !body.count("game_id")) {
             add_cors_headers(response);
-            response.send(Http::Code::Bad_Request, R"({\"error\":\"Missing game_id\"})", MIME(Application, Json));
+            response.send(Http::Code::Bad_Request, R"({"error":"Missing game_id"})", MIME(Application, Json));
             return Rest::Route::Result::Ok;
         }
         string game_id = body["game_id"].get<std::string>();
@@ -253,7 +265,7 @@ int main() {
             auto it = games.find(game_id);
             if (it == games.end()) {
                 add_cors_headers(response);
-                response.send(Http::Code::Not_Found, R"({\"error\":\"No such game\"})", MIME(Application, Json));
+                response.send(Http::Code::Not_Found, R"({"error":"No such game"})", MIME(Application, Json));
                 return Rest::Route::Result::Ok;
             }
             game = it->second;
@@ -291,7 +303,7 @@ int main() {
             auto it = games.find(game_id);
             if (it == games.end()) {
                 add_cors_headers(response);
-                response.send(Http::Code::Not_Found, R"({\"error\":\"No such game\"})", MIME(Application, Json));
+                response.send(Http::Code::Not_Found, R"({"error":"No such game"})", MIME(Application, Json));
                 return Rest::Route::Result::Ok;
             }
             the_game = it->second;
