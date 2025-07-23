@@ -9,6 +9,7 @@
 #include <string>
 #include <boost/algorithm/string.hpp>
 #include <vector>
+#include <ctime>
 #include "cwordle.h"
 #include "types.h"
 
@@ -16,25 +17,28 @@ using namespace Pistache;
 using json = nlohmann::json;
 using namespace std;
 
-unordered_map<string, cwordle*> games;
-mutex games_mutex;
+random_device rd;
+mt19937 gen(rd());
+uniform_int_distribution<U32> dis(0, 1<<30);
 
-string generate_game_id() {
-    static random_device rd;
-    static mt19937 gen(rd());
-    static uniform_int_distribution<> dis(0, 15);
-    string id;
-    for (int i = 0; i < 16; ++i) {
-        id += "0123456789abcdef"[dis(gen)];
+struct game_info
+{
+    U32 id;
+    cwordle *game;
+    time_t timestamp;
+    game_info(cwordle *g)
+        : id(dis(gen)), game(g), timestamp(time(nullptr))
+    {        
     }
-    return id;
-}
+    int age() const
+    {
+        return time(nullptr) - timestamp;
+    }
+};
 
-void add_cors_headers(Http::ResponseWriter& response) {
-    response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
-    response.headers().add<Http::Header::AccessControlAllowMethods>("POST, GET, OPTIONS");
-    response.headers().add<Http::Header::AccessControlAllowHeaders>("Content-Type");
-}
+unordered_map<U32, game_info*> games;
+std::set<game_info*> old_games;
+mutex games_mutex;
 
 class RequestException : public std::exception
 {
@@ -76,13 +80,24 @@ pair<json,cwordle*> validate_request(const Rest::Request& req, const vector<stri
     string game_id = body["game_id"].get<std::string>();
     {
         lock_guard<mutex> lock(games_mutex);
-        auto it = games.find(game_id);
+        auto it = games.find(lexical_cast<U32>(game_id));
         if (it == games.end()) {
             throw RequestException("No such game");
         }
-        game = it->second;
+        it->second->timestamp = time(nullptr);
+        game = it->second->game;
     }
     return make_pair(body, game);
+}
+
+/************************************************************************
+ * add_cors_headers - add CORS headers to the response
+ ***********************************************************************/
+
+void add_cors_headers(Http::ResponseWriter& response) {
+    response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
+    response.headers().add<Http::Header::AccessControlAllowMethods>("POST, GET, OPTIONS");
+    response.headers().add<Http::Header::AccessControlAllowHeaders>("Content-Type");
 }
 
 void send_good_response(Http::ResponseWriter &response, const json &res)
@@ -97,6 +112,37 @@ void send_error_response(Http::ResponseWriter &response, const string &err)
     response.send(Http::Code::Bad_Request,
                   "{\"error\":\"" + err + "\"}",
                   MIME(Application, Json));
+}
+
+/************************************************************************
+ * purge_games - called periodically to get rid of completed games
+ * and very old games
+ ***********************************************************************/
+
+void purge_games()
+{
+    lock_guard<mutex> lock(games_mutex);
+    
+    for (auto it : games) {
+        auto *gi = it.second;
+        if ((gi->game->is_over() && gi->age()> 5*60)
+            || gi->age() > 24 *60*60) {
+            games.erase(gi->id);
+            old_games.insert(gi);
+        }
+    }
+    vector<game_info*> to_delete;
+    for (auto it : old_games) {
+        if (it->age() > 10*60) {
+            to_delete.push_back(it);
+        }
+    }
+    for (auto it : to_delete) {
+        game_info *gi = &*it;
+        old_games.erase(it);
+        delete gi->game;
+        delete gi;
+    }
 }
 
 /************************************************************************
@@ -115,15 +161,17 @@ int main() {
         
     router.post("/start", [&](const Rest::Request&, Http::ResponseWriter response)
     {
+        purge_games();
         cwordle *game = NULL;
-        string game_id = generate_game_id();
+        game_info *gi = NULL;
         {
             lock_guard<mutex> lock(games_mutex);
             game = new cwordle(the_dictionary);
-            games[game_id] = game;
+            gi = new game_info(game);
+            games[gi->id] = gi;
         }
         game->new_word();
-        json res = { {"game_id", game_id}, {"length", word_length} };
+        json res = { {"game_id", lexical_cast<string>(gi->id)}, {"length", word_length} };
         send_good_response(response, res);
         return Rest::Route::Result::Ok;
     });
