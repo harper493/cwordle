@@ -65,9 +65,7 @@ int main() {
     do_options(1, (char**)argv);
     dictionary::init();
     cwordle *the_game = NULL;
-    // Register /reveal route before any catch-all or wildcard routes
     router.post("/reveal", [&](const Rest::Request& req, Http::ResponseWriter response) {
-        std::cerr << "Reveal endpoint hit" << std::endl;
         json body;
         try {
             body = json::parse(req.body());
