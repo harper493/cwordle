@@ -215,19 +215,9 @@ void commands::do_remaining()
     check_finished();
     const auto &wl = the_wordle->remaining();
     int sz = wl.size();
-    auto sorted_list = wl.sorted();
-    vector<string> words;
-    string suffix;
     if (sz > 0) { 
-        if (sz > 20) {
-            sz = 20;
-            suffix = ", ...";
-        }
-        for (size_t i : irange(0, sz)) {
-            words.emplace_back(get_dict().get_string(wl[i]));
-        }
-        string words2 = boost::algorithm::join(words, ", ");
-        cout << styled_text(formatted("%d words remaining: %s%s", wl.size(), words2, suffix), output_color) << "\n";
+        cout << styled_text(formatted("%d words remaining: %s", wl.size(), wl.sorted().str(20)),
+                            output_color) << "\n";
     } else {
         cout << styled_text("No remaining words\n", output_color);
     }
