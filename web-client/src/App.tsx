@@ -315,7 +315,7 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Wordle Web Client</h1>
+        <h1>Word Puzzle Helper</h1>
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', width: '100%', justifyContent: 'center' }}>
           {/* QWERTY keyboard on the left */}
           <QwertyKeyboard guesses={guesses} feedback={feedback} onKeyClick={handleKeyClick} />

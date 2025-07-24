@@ -400,7 +400,7 @@ int main() {
     });
 
     /************************************************************************
-     * Catch-all for unknown endpoints
+     * Catch-all for unknown endpoints (including OPTIONS)
      ***********************************************************************/
     
     router.options("/*", [&](const Rest::Request&, Http::ResponseWriter response) {
