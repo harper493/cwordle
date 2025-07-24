@@ -262,7 +262,7 @@ function App() {
 
   const handleRestart = async () => {
     try {
-      const res = await startGame();
+      const res = await startGame(gameId || undefined); // Pass the current gameId if present
       setGameId(res.game_id);
       setWordLength(res.length);
       setGuesses([]);

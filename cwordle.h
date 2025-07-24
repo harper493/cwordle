@@ -18,6 +18,7 @@ private:
     vector<wordle_word::match_target> results;
     vector<word_list> word_lists;
     wordle_word current_word;
+    bool abandoned = false;
 public:
     cwordle(dictionary *dict)
         : my_dict(*dict), all_my_words(my_dict) { };
@@ -68,6 +69,14 @@ public:
     bool is_over() const
     {
         return is_won() || is_lost();
+    }
+    bool is_abandoned() const
+    {
+        return abandoned;
+    }
+    void abandon()
+    {
+        abandoned = true;
     }
     bool is_valid_word(const string_view &w) const
     {

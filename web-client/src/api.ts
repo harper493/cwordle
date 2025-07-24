@@ -23,8 +23,13 @@ export interface StatusResponse {
 
 const API_URL = 'http://localhost:18080';
 
-export async function startGame(): Promise<StartGameResponse> {
-  const res = await fetch(`${API_URL}/start`, { method: 'POST' });
+export async function startGame(currentGameId?: string): Promise<StartGameResponse> {
+  const body = JSON.stringify(currentGameId ? { game_id: currentGameId } : {});
+  const res = await fetch(`${API_URL}/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  });
   if (!res.ok) throw new Error('Failed to start game');
   return res.json();
 }
