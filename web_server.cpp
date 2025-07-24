@@ -121,15 +121,19 @@ void send_error_response(Http::ResponseWriter &response, const string &err)
 
 void purge_games()
 {
+    vector<game_info*> to_erase;
     lock_guard<mutex> lock(games_mutex);
     
     for (auto it : games) {
         auto *gi = it.second;
         if ((gi->game->is_over() && gi->age()> 5*60)
             || gi->age() > 24 *60*60) {
-            games.erase(gi->id);
-            old_games.insert(gi);
+            to_erase.push_back(gi);
         }
+    }
+    for (auto gi : to_erase) {
+        games.erase(gi->id);
+        old_games.insert(gi);
     }
     vector<game_info*> to_delete;
     for (auto it : old_games) {
@@ -137,9 +141,8 @@ void purge_games()
             to_delete.push_back(it);
         }
     }
-    for (auto it : to_delete) {
-        game_info *gi = &*it;
-        old_games.erase(it);
+    for (auto gi : to_delete) {
+        old_games.erase(gi);
         delete gi->game;
         delete gi;
     }
