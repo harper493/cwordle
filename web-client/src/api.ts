@@ -21,7 +21,7 @@ export interface StatusResponse {
   the_word?: string;
 }
 
-const API_URL = 'http://localhost:18080';
+const API_URL = `http://${window.location.hostname}:3000`;
 
 export async function startGame(currentGameId?: string): Promise<StartGameResponse> {
   const body = JSON.stringify(currentGameId ? { game_id: currentGameId } : {});

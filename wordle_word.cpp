@@ -398,8 +398,8 @@ string word_mask::str() const
  *    word_mask.
  ***********************************************************************/
 
-#define SHOW_MASK(VAR) if (verbose) cout << formatted("%20s: %s\n", #VAR, VAR.str())
-#define SHOW_M256(VAR) if (verbose) cout << formatted("%20s: %s\n", #VAR, wms(VAR))
+#define SHOW_MASK(VAR) if (false) cout << formatted("%20s: %s\n", #VAR, VAR.str())
+#define SHOW_M256(VAR) if (false) cout << formatted("%20s: %s\n", #VAR, wms(VAR))
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wattributes"   // suppress warning about always_inline

@@ -13,6 +13,7 @@
 #include "cwordle.h"
 #include "types.h"
 #include "formatted.h"
+#include "wordle_word.h"
 
 using namespace Pistache;
 using json = nlohmann::json;
@@ -129,7 +130,8 @@ struct request_info
 void add_cors_headers(Http::ResponseWriter& response) {
     response.headers().add<Http::Header::AccessControlAllowOrigin>("*");
     response.headers().add<Http::Header::AccessControlAllowMethods>("POST, GET, OPTIONS");
-    response.headers().add<Http::Header::AccessControlAllowHeaders>("Content-Type");
+    response.headers().add<Http::Header::AccessControlAllowHeaders>("Content-Type, Authorization, X-Requested-With");
+    response.headers().addRaw(Http::Header::Raw("Access-Control-Allow-Credentials", "true"));
 }
 
 void send_good_response(Http::ResponseWriter &response, const json &res)
@@ -205,6 +207,9 @@ int main() {
     const char* argv[] = {"cwordle"};
     do_options(1, (char**)argv);
     dictionary::init();
+    
+    // Disable verbose debug output
+    wordle_word::set_verbose(false);
 
     /************************************************************************
      * Handle /start endpoint
@@ -399,6 +404,7 @@ int main() {
         }
     });
 
+
     /************************************************************************
      * Catch-all for unknown endpoints (including OPTIONS)
      ***********************************************************************/
@@ -415,7 +421,7 @@ int main() {
     
     while (true) {
         try {
-            auto server = std::make_unique<Http::Endpoint>(Address(Ipv4::any(), Port(18080)));
+            auto server = std::make_unique<Http::Endpoint>(Address(Ipv4::any(), Port(3000)));
             auto opts = Http::Endpoint::options().threads(4);
             server->init(opts);
             server->setHandler(router.handler());
