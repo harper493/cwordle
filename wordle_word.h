@@ -483,9 +483,9 @@ public:
         {
             return (partial_match & (1 << i)) != 0;
         }
-        U16 get_hash() const
+        U32 get_hash() const
         {
-            return (partial_match.get() << 5) | exact_match.get();
+            return (partial_match.get() << word_length) | exact_match.get();
         }
         string str() const
         {
@@ -502,9 +502,13 @@ public:
             return result;
         }
         bool parse(const string &s);
-        static U16 good_bits()
+        static U32 good_bits()
         {
             return (1 << word_length) - 1;
+        }
+        static match_result from_hash(U16 hash)
+        {
+            return match_result(hash & good_bits(), (hash >> word_length) & good_bits());
         }
     friend class wordle_word;
     friend class match_target;

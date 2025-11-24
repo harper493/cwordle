@@ -28,6 +28,7 @@ public:
     word_list filter_exact(const wordle_word::match_target &mt) const;
     word_list filter_pred(function<bool(const string_view &w)> pred) const;
     word_list sorted() const;
+    word_list get_allowed() const;
     float entropy(const wordle_word &w) const;
     string str(size_t length=0) const;
     vector<string> to_string_vector(size_t length=0) const;
@@ -38,6 +39,7 @@ private:
         unfilled = false;
         my_words.emplace_back(word);
     }
+    static string show_entropy(const wordle_word &target, const vector<float> &counts);
 };
 
 #endif

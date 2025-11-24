@@ -1,6 +1,7 @@
 #include "word_list.h"
 #include "entropy.h"
 #include "timers.h"
+#include "wordle_word.h"
 
 /************************************************************************
  * word_list - representation of a list of words from the dictionary.
@@ -163,7 +164,31 @@ float word_list::entropy(const wordle_word &target) const
     timers::entropy_timer.restart();
     float result = ::entropy(counts);
     timers::entropy_timer.pause();
+    //std::cout << show_entropy(target, counts) << '\n' << formatted("%.3f", result) << '\n';
     return result;
+}
+
+string word_list::show_entropy(const wordle_word &target, const vector<float> &counts)
+{
+    string result;
+    for (size_t idx=0; idx<counts.size(); ++idx) {
+        if (counts[idx] > 0) {
+            if (!result.empty()) {
+                result += '\n';
+            }
+            result += formatted("%s   %d", target.styled_str(wordle_word::match_result::from_hash(idx)), counts[idx]);
+        }
+    }
+    return result;
+}
+
+/************************************************************************
+ * get_allowed - get only the allowed words from the list
+ ***********************************************************************/
+
+word_list word_list::get_allowed() const
+{
+    return filter_pred([this](const string_view &s){ return my_dict.is_allowed(s); });
 }
 
 /************************************************************************

@@ -49,7 +49,8 @@ bool cwordle::load_file_allowed(const string &filename)
 cwordle::result_list_t cwordle::best(size_t how_many)
 {
     result_list_t result(how_many);
-    const word_list &wl = word_lists.empty() ? all_my_words : word_lists.back();
+    const word_list &wlbase = (word_lists.empty() ? all_my_words : word_lists.back());
+    const word_list wl = wlbase.get_allowed();
     auto *r = strict_mode && !the_wordle->empty() ? &the_wordle->get_last_result() : NULL;
     for (const auto &w : my_dict.get_words()) {
         if (r==NULL || r->conforms_exact(w.str())) {
@@ -69,9 +70,9 @@ float cwordle::entropy(const wordle_word &w)
 {
     float result = 0;
     if (word_lists.empty()) {
-        result = all_my_words.entropy(w);
+        result = all_my_words.get_allowed().entropy(w);
     } else {
-        result = word_lists.back().entropy(w);
+        result = word_lists.back().get_allowed().entropy(w);
     }
     return result;
 }
