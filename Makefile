@@ -1,8 +1,16 @@
+DEBUG_COUNT := $(strip $(wildcard DEBUG))
+
 CXX=g++
 RM=rm -f
 OBJDIR=obj
 #CXXFLAGS=-g -mavx -mavx2 -mavx512f -mavx512cd -mavx512vl -std=c++23 -O0
-CXXFLAGS=-g -march=native -std=c++23 -Ipistache/include  -Wno-deprecated -O0
+CXXFLAGS=-g -march=native -std=c++23 -Ipistache/include  -Wno-deprecated
+ifneq ($(DEBUG_COUNT),)
+    CXXFLAGS := $(CXXFLAGS) -O0
+else
+    CXXFLAGS := $(CXXFLAGS) -O3
+endif
+
 LDFLAGS=-g 
 LDLIBS=-lboost_program_options -lboost_filesystem -lboost_system -Lpistache/build/src -l:libpistache.a
 
@@ -53,6 +61,10 @@ CLI_OBJS=$(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(CLI_ALL)))
 WEB_OBJS=$(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(WEB_ALL)))
 
 all: cwordle
+
+.PHONY:	clean
+clean:
+	-rm -f $(OBJDIR)/* cwordle cwordle_web_server
 
 $(OBJDIR)/%.o: %.cpp
 	$(CXX) $(CXXFLAGS) -g -c $< -o $@
