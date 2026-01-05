@@ -36,6 +36,8 @@ KEYWORD("remaining", "rem", do_remaining, "show remaining matching words")
 KEYWORD("result", "res", do_result, "supply result of a test")
 KEYWORD("reveal", "rev", do_reveal, "reveal the current word (i.e. cheat)")
 KEYWORD("set", "set", do_set, "set an explicit word")
+KEYWORD("solve", "sol", do_solve, "solve the current or a new word automatically")
+KEYWORD("start", "sta", do_start, "set starting word for 'solve' command, or 'none' to use default")
 KEYWORD("test", "test", do_test, "run numbered development test")
 KEYWORD("try", "t", do_try, "try a word against the current word")
 KEYWORD("undo", "un", do_undo, "undo the last tried word")
@@ -187,6 +189,7 @@ void commands::do_new()
     check_finished();
     the_wordle->clear();
     new_word();
+    solved = false;
 }
 
 /************************************************************************
@@ -280,6 +283,50 @@ void commands::do_set()
     } else {
         the_wordle->set_word(validate_word(w)->str());
     }
+    solved = false;
+}
+
+/************************************************************************
+ * do_start - set the starting word for the solve command
+ ***********************************************************************/
+
+void commands::do_start()
+{
+    string w = next_arg();
+    check_finished();
+    if (w == "none") {
+        w.clear();
+    } else {
+        w = validate_word(w)->str();
+    }
+    the_wordle->set_requested_start(w);
+}
+
+/************************************************************************
+ * do_solve - create a new word if the solve command has already run on 
+ * this one. Then solve it automatically.
+ ***********************************************************************/
+
+void commands::do_solve()
+{
+    check_finished();
+    if (solved) {
+        do_new();
+    }
+    auto sr = the_wordle->solve();
+    if (sr.success) {
+        cout << styled_text(formatted("The word '%s' was found in %d tries\n",
+                                      the_wordle->get_current_word().str(),
+                                      sr.words.size()),
+                            output_color);
+    } else {
+        cout << styled_text(formatted("Failed to solve the word '%s'\n", the_wordle->get_current_word().str()),
+                            output_color);
+    }
+    for (auto r : sr.words) {
+        cout << wordle_word(r.first).styled_str(r.second) << "\n";
+    }
+    solved = true;
 }
 
 /************************************************************************
@@ -288,7 +335,9 @@ void commands::do_set()
 
 void commands::do_test()
 {
-    tests::do_test(next_arg_int().value());
+    int test_no = next_arg_int().value();
+    optional<int> arg = next_arg_int(true).value();
+    tests::do_test(test_no, arg);
 }
 
 /************************************************************************
@@ -338,6 +387,7 @@ void commands::do_words()
     while (!(w = next_arg(true)).empty()) {
         string g = wordle_word::groom(w);
         get_dict().insert(g);
+        get_dict().insert_allowed(g);
     }
 }
 

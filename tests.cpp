@@ -7,21 +7,25 @@
 #include "entropy.h"
 #include "commands.h"
 #include "cwordle.h"
+#include <numeric>
 
-void tests::do_test(int t)
+void tests::do_test(int t, optional<int> arg)
 {
     switch (t) {
     case 1:
-        test1();
+        test1(arg);
         break;
     case 2:
-        test2();
+        test2(arg);
         break;
     case 3:
-        test3();
+        test3(arg);
         break;
     case 4:
-        test4();
+        test4(arg);
+        break;
+    case 5:
+        test5(arg);
         break;
     default:
         break;
@@ -64,7 +68,7 @@ string tests::t(const string &w1, const string &w2, const string &correct,
     return formatted("%s  %s  %s  %s", sw1, sw2, result, matches);
 }
 
-void tests::test1()
+void tests::test1(optional<int>)
 {
     cout << t("ploop", "poppy", "21100",
               { "ploop", "plopo" },
@@ -130,7 +134,7 @@ void tests::test1()
     cout << t("abode", "water", "01010", {}, {}) << "\n";
 }
 
-void tests::test2()
+void tests::test2(optional<int>)
 {
     vector<float> d1;
     for (size_t i : irange(0,16)) {
@@ -158,7 +162,7 @@ void tests::test2()
  * Performance test of three methods for loading dictionary 
  ***********************************************************************/
 
-void tests::test3()
+void tests::test3(optional<int>)
 {
     const int iterations = 100;
     for (const auto &w : the_wordle->get_dictionary()) {
@@ -187,7 +191,7 @@ void tests::test3()
  * 'explain' the result of each of the three methods of creating a word
  ***********************************************************************/
 
-void tests::test4()
+void tests::test4(optional<int>)
 {
     string w(the_commands->next_arg());
     for (auto m : irange(1, 4)) {
@@ -197,3 +201,36 @@ void tests::test4()
     }
 }
 
+/************************************************************************
+ * test 5 - run the solver the specified number of times and show how many
+ * tries were needed
+ ***********************************************************************/
+
+void tests::test5(optional<int> arg)
+{
+    int test_count = arg.value_or(100);
+    vector<int> counts;
+    int failed = 0;
+    string failures;
+    for (int i=0; i<max_guesses+1; ++i) {
+        counts.push_back(0);
+    }
+    for (int t=0; t<test_count; ++t) {
+        the_wordle->new_word();
+        auto sr = the_wordle->solve();
+        if (sr.success) {
+            ++counts[sr.words.size()];
+        } else {
+            ++failed;
+            failures += " ";
+            failures += the_wordle->get_current_word().str();
+        }
+    }
+    int total = 0;
+    for (int i=1; i<max_guesses+1; ++i) {
+        cout << formatted("%d tries: %6d %6.1f %%\n", i, counts[i], 100.0 * counts[i] / float(test_count));
+        total += counts[i] * i;
+    }
+    cout << formatted("Failed:  %6d %6.1f %% %s\n", failed, 100.0 * failed / float(test_count), failures);
+    cout << formatted("Average: %6.1f\n", total / float(test_count));
+}

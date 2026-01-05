@@ -158,6 +158,35 @@ wordle_word::match_result cwordle::try_word(const wordle_word &w)
 }
 
 /************************************************************************
+ * solve - solve for the current word, returning the intermediate words
+ ***********************************************************************/
+
+cwordle::solve_result cwordle::solve()
+{
+    solve_result result;
+    string next_word = requested_start;
+    if (next_word.empty()) {
+        if (best_start.empty()) {
+            best_start = best(1).begin()->key->str();
+        }
+        next_word = best_start;
+    }
+    while (!is_over()) {
+        result.words.emplace_back(next_word, try_word(wordle_word(next_word)));
+        auto sz = remaining().size();
+        if (sz==0) {            
+            break; // this will return a failure
+        } else if (sz==1) {
+            next_word = remaining().str(1);
+        } else {
+            next_word = best(1).begin()->key->str();
+        }
+    }
+    result.success = is_won();
+    return result;
+}
+
+/************************************************************************
  * undo - remove the last attempt
  ***********************************************************************/
     

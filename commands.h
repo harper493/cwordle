@@ -66,6 +66,7 @@ private:
     string rest_of_line;
     string cur_arg;
     bool show_timing = false;
+    bool solved = false;
 public:
     commands();
     bool do_command(const string &line);
@@ -85,6 +86,8 @@ public:
     void do_result();
     void do_reveal();
     void do_set();
+    void do_solve();
+    void do_start();
     void do_test();
     void do_try();
     void do_undo();
