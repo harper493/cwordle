@@ -24,6 +24,7 @@ public:
     const_iterator begin() const { fill(); return my_words.begin(); }
     const_iterator end() const { fill(); return my_words.end(); }
     dictionary::word_index_t operator[](size_t idx) const { fill(); return my_words[idx]; }
+    bool contains(const wordle_word &w) const;
     word_list filter(const wordle_word::match_target &mt) const;
     word_list filter_exact(const wordle_word::match_target &mt) const;
     word_list filter_pred(function<bool(const string_view &w)> pred) const;

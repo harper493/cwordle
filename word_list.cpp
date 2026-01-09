@@ -237,6 +237,21 @@ word_list word_list::get_allowed() const
 }
 
 /************************************************************************
+ * contains - return true iff the given word is in the list
+ ***********************************************************************/
+
+bool word_list::contains(const wordle_word &w) const
+{
+    for (auto i : my_words) {
+        if (w==my_dict[i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+/************************************************************************
  * str - return a space-separated list of the words in the list.
  * Truncate to the given length if non-zero.
  ***********************************************************************/

@@ -56,7 +56,13 @@ cwordle::result_list_t cwordle::best(size_t how_many)
         if (r==NULL || r->conforms_exact(w.str())) {
             float e = wl.entropy(w);
             if (!result.get_worst_key() || e >= result.get_worst_key().value()) {
-                float elim = wl.size() <= ELIMINATE_MAX ? wl.evaluate_elimination(w) : 1;
+                float elim = 1;
+                if (wl.size() <= ELIMINATE_MAX) {
+                    elim = wl.evaluate_elimination(w);
+                    if (wl.contains(w)) {
+                        e += 0.1;
+                    }
+                }
                 if (elim > 0) {
                     result.insert(&w, e);
                 }
