@@ -164,7 +164,13 @@ float word_list::entropy(const wordle_word &target) const
     timers::entropy_timer.restart();
     float result = ::entropy(counts);
     timers::entropy_timer.pause();
-    //std::cout << show_entropy(target, counts) << '\n' << formatted("%.3f", result) << '\n';
+#if 0
+    for (int i=0; i<counts.size(); ++i) {
+        if (counts[i]) {
+            cout << formatted("%s  %5d\n", wordle_word::match_result::from_hash(i).str(), counts[i]);
+        }
+    }
+#endif
     return result;
 }
 
@@ -180,6 +186,45 @@ string word_list::show_entropy(const wordle_word &target, const vector<float> &c
         }
     }
     return result;
+}
+
+/************************************************************************
+ * evaluate_elmination - evaluate how good a job a word does in eliminating
+ * words from a word list. Compare it with each word, and then 
+ * determine how many other words will be eliminatwed by this. Return the
+ * average, except that if any word gives a result of 0, that is returned.
+ *
+ * This is needed, especially when the word list is small, because a word
+ * can have excellent overall entropy yet be unable to eliminate anything
+ * for some trials.
+ *
+ * The example that led to this: the word list is reduced to 'harry, wharf'.
+ * 'adapt' shares the highest entropy for this case. But if the word
+ * is 'harry', the resulting match doesn't eliminate either word, so no
+ * progress is made.
+ ***********************************************************************/
+
+float word_list::evaluate_elimination(const wordle_word &w) const
+{
+    float total = 0;
+    for (auto idx1 : *this) {
+        int this_total = 0;
+        const wordle_word &target = my_dict[idx1];
+        auto mr = w.do_match(target, false);
+        wordle_word::match_target mt(w, mr);
+        for (auto idx2 : *this) {
+            if (idx1 != idx2) {
+                if (!mt.conforms(my_dict[idx2])) {
+                    ++this_total;
+                }
+            }
+        }
+        if (this_total==0) {
+            return 0;
+        }
+        total += this_total;
+    }
+    return total / size();
 }
 
 /************************************************************************

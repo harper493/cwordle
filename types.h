@@ -90,6 +90,7 @@ bool do_options(int argc, char *argv[]);
 #define DEFAULT_LANGUAGE "english"
 #define DEFAULT_PATH "languages/"
 #define ALPHABET_SIZE 26
+#define ELIMINATE_MAX 20
 #define AVX512
 
 template<typename T>

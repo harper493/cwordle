@@ -41,7 +41,7 @@ private:
     size_t max_size;
     bool sorted = false;
     bool decreasing = true;
-    VALUE worst_key = FLT_MAX;
+    optional<VALUE> worst_key;
 public:
     partial_sorted_list(size_t sz=1, bool d=true)
         : max_size(sz), decreasing(d)
@@ -53,12 +53,17 @@ public:
     const_iterator begin() const { return entries.begin(); };
     const_iterator end() const { return entries.end(); };
     size_t size() const { return entries.size(); };
-    VALUE get_worst_key() const { return worst_key; };
+    optional<VALUE> get_worst_key() const { return worst_key; };
+    VALUE get_best_key() const
+    {
+        reorder();
+        return entries[0].value;
+    }
     void insert(const KEY &k, const VALUE &v)
     {
         if (entries.size() < max_size) {
             entries.emplace_back(k, v);
-            worst_key = FLT_MAX;
+            worst_key = std::min(worst_key.value_or(FLT_MAX), v);
         } else if (max_size==1) {
             if (v > entries[0].value) {
                 entries[0] = entry(k, v);
@@ -68,7 +73,7 @@ public:
             if (!sorted) {
                 reorder();
             }
-            if (v > worst_key) {
+            if (v > worst_key.value_or(FLT_MAX)) {
                 entries[entries.size() - 1] = entry(k, v);
                 sorted = false;
             }
@@ -81,7 +86,7 @@ public:
         }
         sorted = false;
         reorder();
-        return worst_key;
+        return worst_key.value();
     }
     template<class ITER>
     VALUE merge(ITER &start, const ITER &end)
@@ -93,7 +98,7 @@ public:
         }
         sorted = false;
         reorder();
-        return worst_key;
+        return worst_key.value();
     }
     vector<size_t> get_values() const
     {

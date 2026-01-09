@@ -642,6 +642,7 @@ public:
     letter_mask get_once_letters() const { return once_letters; };
     letter_mask get_twice_letters() const { return twice_letters; };
     letter_mask get_many_letters() const { return many_letters; };
+    match_result do_match(const wordle_word &target, bool verbose) const;
     static match_mask make_letters_mask()
     {
         return match_mask((1<<word_length) - 1);
@@ -653,7 +654,6 @@ public:
     static string groom(const string_view &w);
     static void set_verbose(bool v) { verbose = v; };
 private:
-    match_result do_match(const wordle_word &target, bool verbose) const _always_inline;
     static match_mask::mask_t to_mask(word_mask::mask_t matched)
     {
         return avx::cmpgt_mask(matched, avx::zero(word_mask::mask_t()));

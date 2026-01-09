@@ -29,9 +29,13 @@ public:
     word_list filter_pred(function<bool(const string_view &w)> pred) const;
     word_list sorted() const;
     word_list get_allowed() const;
+    float evaluate_elimination(const wordle_word &w) const;
     float entropy(const wordle_word &w) const;
     string str(size_t length=0) const;
     vector<string> to_string_vector(size_t length=0) const;
+    string get_word_from_index(size_t idx) const { return string(my_dict[idx].str()); };
+    string get_first_word() const { return string(my_dict[my_words[0]].str()); };
+    string get_last_word() const { return string(my_dict[my_words[my_words.size()-1]].str()); };
 private:
     void fill() const;
     void insert(dictionary::word_index_t word)

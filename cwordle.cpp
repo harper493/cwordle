@@ -55,7 +55,12 @@ cwordle::result_list_t cwordle::best(size_t how_many)
     for (const auto &w : my_dict.get_words()) {
         if (r==NULL || r->conforms_exact(w.str())) {
             float e = wl.entropy(w);
-            result.insert(&w, e);
+            if (!result.get_worst_key() || e >= result.get_worst_key().value()) {
+                float elim = wl.size() <= ELIMINATE_MAX ? wl.evaluate_elimination(w) : 1;
+                if (elim > 0) {
+                    result.insert(&w, e);
+                }
+            }
         }
     }
     return result;
