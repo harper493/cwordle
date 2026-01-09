@@ -189,9 +189,9 @@ string word_list::show_entropy(const wordle_word &target, const vector<float> &c
 }
 
 /************************************************************************
- * evaluate_elmination - evaluate how good a job a word does in eliminating
+ * evaluate_elimination - evaluate how good a job a word does in eliminating
  * words from a word list. Compare it with each word, and then 
- * determine how many other words will be eliminatwed by this. Return the
+ * determine how many other words will be eliminated by this. Return the
  * average, except that if any word gives a result of 0, that is returned.
  *
  * This is needed, especially when the word list is small, because a word
