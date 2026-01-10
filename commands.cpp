@@ -309,6 +309,11 @@ void commands::do_start()
 
 void commands::do_solve()
 {
+    string word = next_arg(true);
+    if (!word.empty()) {
+        the_wordle->set_word(validate_word(word)->str());
+        solved = false;
+    }
     check_finished();
     if (solved) {
         do_new();
