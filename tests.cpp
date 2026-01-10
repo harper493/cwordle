@@ -9,23 +9,23 @@
 #include "cwordle.h"
 #include <numeric>
 
-void tests::do_test(int t, optional<int> arg)
+void tests::do_test(int t, commands &cmd)
 {
     switch (t) {
     case 1:
-        test1(arg);
+        test1(cmd);
         break;
     case 2:
-        test2(arg);
+        test2(cmd);
         break;
     case 3:
-        test3(arg);
+        test3(cmd);
         break;
     case 4:
-        test4(arg);
+        test4(cmd);
         break;
     case 5:
-        test5(arg);
+        test5(cmd);
         break;
     default:
         break;
@@ -68,7 +68,7 @@ string tests::t(const string &w1, const string &w2, const string &correct,
     return formatted("%s  %s  %s  %s", sw1, sw2, result, matches);
 }
 
-void tests::test1(optional<int>)
+void tests::test1(commands &cmd)
 {
     cout << t("ploop", "poppy", "21100",
               { "ploop", "plopo" },
@@ -134,7 +134,7 @@ void tests::test1(optional<int>)
     cout << t("abode", "water", "01010", {}, {}) << "\n";
 }
 
-void tests::test2(optional<int>)
+void tests::test2(commands &cmd)
 {
     vector<float> d1;
     for (size_t i : irange(0,16)) {
@@ -162,7 +162,7 @@ void tests::test2(optional<int>)
  * Performance test of three methods for loading dictionary 
  ***********************************************************************/
 
-void tests::test3(optional<int>)
+void tests::test3(commands &cmd)
 {
     const int iterations = 100;
     for (const auto &w : the_wordle->get_dictionary()) {
@@ -191,7 +191,7 @@ void tests::test3(optional<int>)
  * 'explain' the result of each of the three methods of creating a word
  ***********************************************************************/
 
-void tests::test4(optional<int>)
+void tests::test4(commands &cmd)
 {
     string w(the_commands->next_arg());
     for (auto m : irange(1, 4)) {
@@ -206,9 +206,9 @@ void tests::test4(optional<int>)
  * tries were needed
  ***********************************************************************/
 
-void tests::test5(optional<int> arg)
+void tests::test5(commands &cmd)
 {
-    int test_count = arg.value_or(100);
+    int test_count = cmd.next_arg_int(true).value_or(100);
     vector<int> counts;
     int failed = 0;
     string failures;

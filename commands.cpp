@@ -341,8 +341,7 @@ void commands::do_solve()
 void commands::do_test()
 {
     int test_no = next_arg_int().value();
-    optional<int> arg = next_arg_int(true).value();
-    tests::do_test(test_no, arg);
+    tests::do_test(test_no, *this);
 }
 
 /************************************************************************
