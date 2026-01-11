@@ -25,23 +25,23 @@ extern bool load_dict();
  ***********************************************************************/
 
 KEYWORDS(command_list)
-KEYWORD("best", "b", do_best, "show best word(s) to filter remaining words")
-KEYWORD("entropy", "ent", do_entropy, "show entropy for a word against current remaining")
+KEYWORD("best", "b", do_best, "[how many]|show best word(s) to filter remaining possible words")
+KEYWORD("entropy", "ent", do_entropy, "word|show entropy for a word against remaining possible words")
 KEYWORD("exit", "ex", do_exit, "exit cwordle")
-KEYWORD("explain", "exp", do_explain, "explain how a word is analysed")
-KEYWORD("help", "h", do_help, "show help text")
+KEYWORD("explain", "exp", do_explain, "word|explain how a word is analysed")
+KEYWORD("help", "h", do_help, "[command]|show help text")
 KEYWORD("new", "n", do_new, "select a new random word")
-KEYWORD("recap", "rec", do_recap, "recap worsd tried so far")
+KEYWORD("recap", "rec", do_recap, "recap words tried so far")
 KEYWORD("remaining", "rem", do_remaining, "show remaining matching words")
-KEYWORD("result", "res", do_result, "supply result of a test")
+KEYWORD("result", "res", do_result, "word result|supply result of a test e,g. 01201 where: 0=no match, 1=match elsewhere, 2=match here")
 KEYWORD("reveal", "rev", do_reveal, "reveal the current word (i.e. cheat)")
-KEYWORD("set", "set", do_set, "set an explicit word")
-KEYWORD("solve", "sol", do_solve, "solve the current or a new word automatically")
-KEYWORD("start", "sta", do_start, "set starting word for 'solve' command, or 'none' to use default")
-KEYWORD("test", "test", do_test, "run numbered development test")
-KEYWORD("try", "t", do_try, "try a word against the current word")
+KEYWORD("set", "set", do_set, "word|set an explicit word")
+KEYWORD("solve", "sol", do_solve, "[word]|solve the given or current or a new word automatically")
+KEYWORD("start", "sta", do_start, "word|set starting word for 'solve' command, or 'none' to use default")
+KEYWORD("test", "test", do_test, "test-no [args]|run numbered development test")
+KEYWORD("try", "t", do_try, "word|try a word against the current word")
 KEYWORD("undo", "un", do_undo, "undo the last tried word")
-KEYWORD("words", "word", do_words, "add one or more words to the dictionary")
+KEYWORD("words", "word", do_words, "words...|add one or more words to the dictionary")
 KEYWORDS_END()
 
 regex rx_command("(\\S+)\\s*(.*)", std::regex_constants::ECMAScript);
@@ -163,22 +163,32 @@ void commands::do_explain()
 
 void commands::do_help()
 {
-    std::map<string, const keyword*> cmds;
+    std::map<string, pair<string,string>> cmds;
     string topic = next_arg(true);
+    size_t max_first_length = 0;
     for (const auto &k : command_list.keywords) {
         if (topic.empty() || k.full==topic) {
-            cmds[k.full] = &k;
+            vector<string> split_help;
+            boost::split(split_help, k.help, boost::is_any_of("|"));
+            cmds[k.full] = split_help.size()==1 ? make_pair(string(""), k.help)
+                                                : make_pair(split_help[0], split_help[1]);
+            max_first_length = std::max(max_first_length, k.full.size() + cmds[k.full].first.size());
         }
     }
     if (cmds.empty()) {
         throw syntax_exception("'%s' is not a wordle command", topic);
     }
+    size_t first_size = max_first_length + 3;
+    string spaces(first_size, ' ');
     for (const auto &i : cmds) {
-        cout << styled_text(formatted("%-10s", i.first), output_color)
-             << styled_text(i.second->help, styled_text::magenta)
+        cout << styled_text(i.first + " ", styled_text::deep_blue)
+             << styled_text(i.second.first, styled_text::deep_blue, styled_text::color_none, styled_text::italic)
+             << spaces.substr(0, max_first_length + 2 - (i.first.size() + i.second.first.size()))
+             << styled_text(i.second.second, styled_text::magenta)
              << "\n";
     }
 }
+
 
 /************************************************************************
  * do_new - choose a new random word
