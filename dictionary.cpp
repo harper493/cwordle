@@ -9,8 +9,6 @@
 void dictionary::init()
 {
     the_dictionary = new dictionary();
-    the_dictionary->load(::wordle_words);
-    the_dictionary->load_allowed(::allowed_words);
 }
 
 /************************************************************************
@@ -172,6 +170,10 @@ string_view dictionary::get_allowed() const
 
 bool dictionary::is_allowed(const string_view &w) const
 {
-    auto i = find(w);
-    return i && (allowed_word_set.find(i.value()) != allowed_word_set.end());
+    if (allowed_word_set.empty()) {
+        return true;
+    } else {
+        auto i = find(w);
+        return i && (allowed_word_set.find(i.value()) != allowed_word_set.end());
+    }
 }

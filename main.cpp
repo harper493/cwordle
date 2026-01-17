@@ -90,7 +90,7 @@ pair<string,string> get_dict_filenames()
 bool load_dict()
 {
     string dict_file = options["dict"].as<string>();
-   if (dict_file.empty() && the_language.empty()) {
+    if (dict_file.empty() && the_language.empty()) {
         the_language = DEFAULT_LANGUAGE;
         string vocab = options["vocab"].as<string>();
         if (vocab.empty()) {
