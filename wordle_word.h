@@ -151,7 +151,7 @@ public:
     }
     bool operator!=(const letter_mask &other) const
     {
-        return mask == other.mask;
+        return mask != other.mask;
     }
     bool operator<(const letter_mask &other) const
     {
