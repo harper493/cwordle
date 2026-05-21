@@ -226,7 +226,6 @@ void wordle_word::set_word(const string_view &w)
     text = w;
     exact_mask = word_mask(w);
     all_letters = exact_mask.all_letters();
-    auto zero(avx::zero(word_mask::mask_t()));
     auto ones = avx::set1(word_mask::mask_t(), 1);
     word_mask conflict(avx::conflict(exact_mask.get()));
     conflict = conflict.select(match_mask::all());
@@ -277,7 +276,7 @@ string wordle_word::groom(const string_view &w)
 {
     string result;
     letter_counter letter_count;
-    if (w.size() == word_length) {
+    if (w.size() == size_t(word_length)) {
         for (char ch : w) {
             if (isalpha(ch)) {
                 if (isupper(ch)) {
@@ -365,7 +364,7 @@ string word_mask::str() const
         } else {
             result += "-";
         }
-        if (i < word_length - 1) {
+        if (i < size_t(word_length) - 1) {
             result += "|";
         }
     }
@@ -433,7 +432,7 @@ wordle_word::match_result wordle_word::do_match(const wordle_word &target, bool 
             word_mask p = possible_partials & target_many_mask;
             match_mask m2 = p.to_mask();
             match_mask m3 = m2.reduce_bitcount(count);
-            partial_result |= m2;
+            partial_result |= m3;
         }
     }
     letter_mask dups = repeated_letters & exact_letters;
@@ -494,7 +493,7 @@ bool wordle_word::match_result::parse(const string &m)
     bool result = true;
     U16 e = 0;
     U16 p = 0;
-    if (m.size()==word_length) {
+    if (m.size()==size_t(word_length)) {
         for (size_t i : irange(0, word_length)) {
             if (m[i]=='1') {
                 p |= (1 << i);
@@ -613,8 +612,9 @@ bool wordle_word::match_target::conforms(const wordle_word &other) const
     bool result = false;
     if (!(absent_letters & other.all_letters)) {
         if ((required_letters & other.all_letters) == required_letters) {
-            auto exact = exact_mask & other.exact_mask;
-            if (exact.count_matches() == exact_match_count) {
+            auto exact = (my_word->get_exact_mask() & other.exact_mask).to_mask();
+            if ((exact == (exact & my_mr.get_exact()))
+                && (exact.size() == exact_match_count)) {
                 auto partial = only_partial_mask & other.exact_mask;
                 if (partial.count_matches() == 0) {
                     result = true;
@@ -632,6 +632,10 @@ bool wordle_word::match_target::conforms(const wordle_word &other) const
             }
         }
     }
+    auto mr = my_word->match(other);
+    if ((mr == my_mr) != result) {
+        int i = 1;
+    }
     return result;
 }
 
@@ -647,7 +651,6 @@ bool wordle_word::match_target::conforms_exact(const string_view &w) const
     return (wm & em)==em;
 }
 
-/************************************************************************
 /************************************************************************
  * count_letter - count the number of times that a given letter is
  * contained in the word, provided either as a char or as a mask

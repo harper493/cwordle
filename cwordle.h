@@ -81,7 +81,7 @@ public:
     }
     bool is_lost() const
     {
-        return results.size()>=max_guesses && get_last_result().str()!=current_word.str();
+        return results.size()>=size_t(max_guesses) && get_last_result().str()!=current_word.str();
     }
     bool is_over() const
     {

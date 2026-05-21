@@ -71,11 +71,11 @@ string tests::t(const string &w1, const string &w2, const string &correct,
 void tests::test1(commands &cmd)
 {
     cout << t("ploop", "poppy", "21100",
-              { "ploop", "plopo" },
-              { "plank", "popps", "poops" }) << '\n';
+              { "ploop" },
+              { "plank", "popps", "poops", "plopo" }) << '\n';
     cout << t("poppy", "ploop", "20101",
-              { "poppy", "prapo", "pppox" },
-              { "ppops", "pppoo" }) << '\n';
+              { "poppy", "prapo" },
+              { "ppops", "pppoo", "pppox" }) << '\n';
     cout << t("beech", "evade", "10001",
               { "beers", "beech", "newer" },
               { "never", "eiger", "eager", "begin" }) << '\n';
@@ -104,8 +104,8 @@ void tests::test1(commands &cmd)
               { "poppy", "puppy" },
               { "upppu", "popop", "potop" }) << '\n';
     cout << t("spoof", "pippy", "10000",
-              { "spoof", "opals", "arpen", "stoop" },
-              { "petal", "poppy", "appit" }) << '\n';
+              { "spoof", "opals", "stoop" },
+              { "petal", "poppy", "appit", "arpen" }) << '\n';
     cout << t("spoop", "pippy", "10100",
               { "spoop" },
               { "popop", "poopp" }) << '\n';
@@ -128,18 +128,15 @@ void tests::test1(commands &cmd)
               { "pewsy", "perik" },
               { "pepwq", "peeps", "peres", "pelpp" }) << '\n';
     cout << t("weppo", "pepep", "12200",
-              { "weppo", "wepop" },
-              { "pepwq", "peeps", "peres", "pelpp" }) << '\n';
+              { "weppo" },
+              { "pepwq", "peeps", "peres", "pelpp", "wepop" }) << '\n';
     cout << t("water", "abode", "10001", {}, {}) << "\n";
     cout << t("abode", "water", "01010", {}, {}) << "\n";
 }
 
 void tests::test2(commands &cmd)
 {
-    vector<float> d1;
-    for (size_t i : irange(0,16)) {
-        d1.push_back(4);
-    }
+    vector<float> d1(16, 4.0f);
     cout << entropy_slowest(d1) << " " << entropy_slow(d1) << " " << entropy(d1) << "\n";
     d1[1] = 10;
     cout << entropy_slowest(d1) << " " << entropy_slow(d1) << " " << entropy(d1) << "\n";

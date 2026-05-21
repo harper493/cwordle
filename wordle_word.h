@@ -41,6 +41,7 @@ public:
         : my_mask(v)
     {
     }
+    match_mask(const match_mask &other) = default;
     match_mask &operator=(const match_mask &other)
     {
         my_mask = other.my_mask;
@@ -306,13 +307,13 @@ private:
 public:
     word_mask() : masks(avx::zero(mask_t())) { };
     word_mask(mask_t m) : masks(m) { };
-    word_mask(const string_view &s)
+    word_mask(const string_view &s) : masks(avx::zero(mask_t()))
     {
-        masks = avx::zero(masks);;
         for (int i : irange(0, int(s.size()))) {
             (*this)[i] = letter_mask(s[i]);
         }
     }
+    word_mask(const word_mask &other) = default;
     word_mask &operator=(const word_mask &other)
     {
         masks = other.masks;
@@ -323,6 +324,10 @@ public:
     mask_t get() const { return masks; };
     iterator begin() { return as_letters().begin(); }
     iterator end() { return as_letters().end(); }
+    bool is_zero() const
+    {
+        return avx::is_zero(masks);
+    }
     explicit operator bool() const
     {
         return !avx::is_zero(masks);
@@ -461,6 +466,7 @@ public:
         match_result() {};
         match_result(const match_result &other)
             : exact_match(other.exact_match), partial_match(other.partial_match) { };
+        match_result &operator=(const match_result &other) = default;
         match_result(match_mask e, match_mask p)
             : exact_match(e & good_bits()), partial_match(p & good_bits()) { };
         match_result(const string &m)
@@ -483,6 +489,14 @@ public:
         {
             return (partial_match & (1 << i)) != 0;
         }
+        match_mask get_exact() const
+        {
+            return exact_match;
+        }
+        match_mask get_partial() const
+        {
+            return partial_match;
+        }
         U32 get_hash() const
         {
             return (partial_match.get() << word_length) | exact_match.get();
@@ -490,7 +504,7 @@ public:
         string str() const
         {
             string result;
-            for (size_t i=0; i<word_length; ++i) {
+            for (size_t i=0; i<size_t(word_length); ++i) {
                 if (is_exact(i)) {
                     result += "2";
                 } else if (is_partial(i)) {
