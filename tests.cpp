@@ -132,6 +132,12 @@ void tests::test1(commands &cmd)
               { "pepwq", "peeps", "peres", "pelpp", "wepop" }) << '\n';
     cout << t("water", "abode", "10001", {}, {}) << "\n";
     cout << t("abode", "water", "01010", {}, {}) << "\n";
+    // Probes for matcher algorithm concerns (agent claims):
+    cout << t("xxxax", "abcba", "10000", {}, {}) << "  // probe: my-twice 'b' (1,3) vs target-once 'a' should still give 1 partial 'a'\n";
+    cout << t("xxxxa", "aaabb", "10000", {}, {}) << "  // probe: my-many 'a' (0,1,2) vs target-once 'a' (4), no overlap — expect 1 partial only\n";
+    cout << t("xxxxa", "aabbb", "10000", {}, {}) << "  // probe: my-twice 'a' (0,1) vs target-once 'a' (4), no overlap — expect 1 partial only\n";
+    cout << t("xxbxa", "aaabb", "10010", {}, {}) << "  // probe: my-many 'a' (3x) and my-twice 'b' (3,4) vs target-once 'a' once 'b'\n";
+    cout << t("byyya", "aaabb", "10010", {}, {}) << "  // probe: my-many 'a' (3x) my-twice 'b' (3,4) vs target-once 'a','b' with double-letter 'y' in target — should give 2 partials\n";
 }
 
 void tests::test2(commands &cmd)
