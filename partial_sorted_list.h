@@ -63,9 +63,11 @@ public:
     {
         if (entries.size() < max_size) {
             entries.emplace_back(k, v);
-            worst_key = std::min(worst_key.value_or(FLT_MAX), v);
+            worst_key = !worst_key ? v
+                      : decreasing ? std::min(worst_key.value(), v)
+                                   : std::max(worst_key.value(), v);
         } else if (max_size==1) {
-            if (v > entries[0].value) {
+            if (is_better(v, entries[0].value)) {
                 entries[0] = entry(k, v);
                 worst_key = v;
             }
@@ -73,7 +75,7 @@ public:
             if (!sorted) {
                 reorder();
             }
-            if (v > worst_key.value_or(FLT_MAX)) {
+            if (worst_key && is_better(v, worst_key.value())) {
                 entries[entries.size() - 1] = entry(k, v);
                 sorted = false;
             }
@@ -100,7 +102,7 @@ public:
         reorder();
         return worst_key.value();
     }
-    vector<size_t> get_values() const
+    vector<VALUE> get_values() const
     {
         vector<VALUE> output;
         for (const auto &r : entries) {
@@ -109,14 +111,19 @@ public:
         return output;
     }
 private:
+    bool is_better(const VALUE &a, const VALUE &b) const
+    {
+        return decreasing ? a > b : a < b;
+    }
     void reorder()
     {
         if (!sorted) {
+            auto mid = entries.size() <= max_size ? entries.end() : entries.begin() + max_size;
             if (decreasing) {
-                std::partial_sort(entries.begin(), entries.begin() + max_size, entries.end(),
+                std::partial_sort(entries.begin(), mid, entries.end(),
                                   [](const entry &e1, const entry &e2){ return e2 < e1; });
             } else {
-                std::partial_sort(entries.begin(), entries.begin() + max_size, entries.end());
+                std::partial_sort(entries.begin(), mid, entries.end());
             }
             if (entries.size() > max_size) {
                 entries.resize(max_size);

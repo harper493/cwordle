@@ -88,7 +88,8 @@ float entropy_slow(const vector<float> &data)
             n += 1;
         }
     }
-    return (((-(e - sum * log(sum)) / sum)));
+    float result = -(e - sum * log(sum)) / sum;
+    return isnan(result) ? 0.0f : result;
 }
 
 /************************************************************************
@@ -109,5 +110,5 @@ float entropy_slowest(const vector<float> &data)
             n += 1;
         }
     }
-    return -e;
+    return isnan(e) ? 0.0f : -e;
 }
