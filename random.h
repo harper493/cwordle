@@ -26,8 +26,8 @@ public:
     }
     static size_t get_int(size_t max)
     {
-        std::uniform_int_distribution<> dis(0, max);
-        return dis(engine);
+        std::uniform_int_distribution<> dis(0, max > 0 ? max - 1 : 0);
+        return max == 0 ? 0 : dis(engine);
     }
 };
 

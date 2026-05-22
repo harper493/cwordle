@@ -51,7 +51,7 @@ cwordle::result_list_t cwordle::best(size_t how_many)
     result_list_t result(how_many);
     const word_list &wlbase = (word_lists.empty() ? all_my_words : word_lists.back());
     const word_list wl = wlbase.get_allowed();
-    auto *r = strict_mode && !the_wordle->empty() ? &the_wordle->get_last_result() : NULL;
+    auto *r = strict_mode && !empty() ? &get_last_result() : NULL;
     for (const auto &w : my_dict.get_words()) {
         if (r==NULL || r->conforms_exact(w.str())) {
             float e = wl.entropy(w);

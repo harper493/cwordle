@@ -17,7 +17,7 @@ private:
     word_vector_t my_words;
 public:
     word_list(const dictionary &d) : my_dict(d) { };
-    bool empty() const { return !unfilled || my_words.empty(); }
+    bool empty() const { return !unfilled && my_words.empty(); }
     size_t size() const { return unfilled ? my_dict.size() : my_words.size(); }
     iterator begin() { fill(); return my_words.begin(); }
     iterator end() { fill(); return my_words.end(); }

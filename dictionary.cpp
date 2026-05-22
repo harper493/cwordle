@@ -42,14 +42,14 @@ void dictionary::load_base(const string_view &s, std::function<bool(const string
     auto b = s.begin();
     auto e = s.end();
     while (b != e) {
-        while (!isalpha(*b) && b != e) {
+        while (b != e && !isalpha(*b)) {
             ++b;
         }
         auto bb = b;
-        while (isalpha(*b) && b != e) {
+        while (b != e && isalpha(*b)) {
             ++b;
         }
-        if (b != e) {
+        if (bb != b) {
             inserter(string_view(bb, b));
         }
     }
