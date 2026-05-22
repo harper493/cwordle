@@ -46,6 +46,7 @@ HDRS = \
 	formatted.h \
 	partial_sorted_list.h \
 	random.h \
+	spinlock.h \
 	styled_text.h \
 	tests.h \
 	timers.h \

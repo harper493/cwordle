@@ -14,6 +14,7 @@
 #include "types.h"
 #include "formatted.h"
 #include "wordle_word.h"
+#include "spinlock.h"
 
 using namespace Pistache;
 using json = nlohmann::json;
@@ -49,7 +50,7 @@ struct game_info
     U32 id;
     cwordle *game;
     time_t timestamp;
-    mutex my_mutex;
+    spinlock my_mutex;
 
     game_info(cwordle *g)
         : id(dis(gen)), game(g), timestamp(time(nullptr))
@@ -100,25 +101,41 @@ struct request_info
             }
         }
         if (body.count("game_id")) {
-            string game_id = body["game_id"].get<std::string>();
-            U32 game_id_n = 0;
-            try {
-                game_id_n = lexical_cast<U32>(game_id);
-            } catch (...) {
+            attach_game(body["game_id"].get<std::string>(), game_required);
+        }
+    }
+    /************************************************************************
+     * build_from_query - alternate build() used by GET endpoints, taking
+     * game_id from the query string rather than a JSON body.
+     ***********************************************************************/
+    void build_from_query(const Rest::Request& req)
+    {
+        auto qv = req.query().get("game_id");
+        if (!qv) {
+            throw RequestException("Missing fields");
+        }
+        attach_game(qv.value(), true);
+    }
+private:
+    void attach_game(const string &game_id, bool game_required)
+    {
+        U32 game_id_n = 0;
+        try {
+            game_id_n = lexical_cast<U32>(game_id);
+        } catch (...) {
+            throw RequestException("No such game");
+        }
+        lock_guard<mutex> lock(games_mutex);
+        auto it = games.find(game_id_n);
+        if (it == games.end()) {
+            if (game_required) {
                 throw RequestException("No such game");
             }
-            lock_guard<mutex> lock(games_mutex);
-            auto it = games.find(game_id_n);
-            if (it == games.end()) {
-                if (game_required) {
-                    throw RequestException("No such game");
-                }
-            } else {
-                my_game_info = it->second;
-                my_game_info->set_timestamp();
-                game = my_game_info->game;
-                my_game_info->my_mutex.lock();
-            }
+        } else {
+            my_game_info = it->second;
+            my_game_info->set_timestamp();
+            game = my_game_info->game;
+            my_game_info->my_mutex.lock();
         }
     }
 };
@@ -223,15 +240,14 @@ int main() {
         if (ri.game) {
             ri.game->abandon();
         }
-        cwordle *new_game = NULL;
+        cwordle *new_game = new cwordle(the_dictionary);
+        new_game->new_word();
         game_info *gi = NULL;
         {
             lock_guard<mutex> lock(games_mutex);
-            new_game = new cwordle(the_dictionary);
             gi = new game_info(new_game);
             games[gi->id] = gi;
         }
-        new_game->new_word();
         json res = { {"game_id", lexical_cast<string>(gi->id)}, {"length", word_length} };
         send_good_response(response, res);
         return Rest::Route::Result::Ok;
@@ -314,21 +330,27 @@ int main() {
             if (!ri.game->is_valid_word(guess)) {
                 throw RequestException("Invalid word");
             }
+            if (explore_state.size() != size_t(word_length)) {
+                throw RequestException("Invalid explore_state length");
+            }
             // Convert explore_state to a string for match_result
             std::string match_str;
             for (int v : explore_state) {
+                if (v < 0 || v > 2) {
+                    throw RequestException("Invalid explore_state value");
+                }
                 match_str += char('0' + v);
             }
             wordle_word::match_result mr(match_str);
             ri.game->set_result(wordle_word(guess), mr);
-            // Prepare feedback for the frontend
+            // Prepare feedback for the frontend (flat, matching /guess)
             std::vector<int> fb;
             for (auto ch : match_str) {
                 fb.emplace_back(ch - '0');
             }
             const auto& rem = ri.game->remaining();
             json res = {
-                {"feedback", std::vector<std::vector<int>>{fb}},
+                {"feedback", fb},
                 {"won", ri.game->is_won()},
                 {"lost", ri.game->is_lost()},
                 {"guesses", ri.game->get_guesses()},
@@ -376,25 +398,17 @@ int main() {
     {
         try {
             request_info ri;
-            ri.build(req, {});
-            std::vector<std::string> words;
-            if (!(ri.game->is_over() || ri.game->size()==0)) {            
-                auto best_list = ri.game->best(5);
-                for (const auto& r : best_list) {
-                    if (r.key) words.push_back(string(r.key->str()));
-                }
-            }
+            ri.build_from_query(req);
             json res = {
-                {"guesses", ri.game->size()},
+                {"guesses", ri.game->get_guesses()},
                 {"won", ri.game->is_won()},
                 {"lost", ri.game->is_lost()},
                 {"length", ri.game->get_current_word().size()}
             };
-            if (ri.game->is_over()) {
-                res["answer"] = ri.game->get_current_word().str();
-            }
             if (ri.game->is_lost()) {
                 res["the_word"] = ri.game->get_current_word().str();
+            } else if (ri.game->is_won()) {
+                res["answer"] = ri.game->get_current_word().str();
             }
             send_good_response(response, res);
             return Rest::Route::Result::Ok;
