@@ -221,7 +221,7 @@ public:
     }
     static letter_mask all()
     {
-        return letter_mask(U32((1 << (ALPHABET_SIZE+1)) - 1));
+        return letter_mask(U32((1 << ALPHABET_SIZE) - 1));
     }
     /************************************************************************
      * iterator - return each letter covered by the mask (as a one-bit

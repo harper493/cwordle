@@ -77,11 +77,11 @@ public:
     bool test_exact(const string_view &w);
     bool is_won() const
     {
-        return remaining().size()==1 && get_last_result().str()==current_word.str();
+        return !empty() && remaining().size()==1 && get_last_result().str()==current_word.str();
     }
     bool is_lost() const
     {
-        return results.size()>=size_t(max_guesses) && get_last_result().str()!=current_word.str();
+        return !empty() && results.size()>=size_t(max_guesses) && get_last_result().str()!=current_word.str();
     }
     bool is_over() const
     {

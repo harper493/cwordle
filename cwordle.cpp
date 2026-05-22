@@ -19,11 +19,13 @@
 void cwordle::load_words(const string_view &s)
 {
     my_dict.load(s);
+    best_start.clear();
 }
 
 void cwordle::load_words_allowed(const string_view &s)
 {
     my_dict.load_allowed(s);
+    best_start.clear();
 }
 
 /************************************************************************
@@ -33,11 +35,13 @@ void cwordle::load_words_allowed(const string_view &s)
 
 bool cwordle::load_file(const string &filename)
 {
+    best_start.clear();
     return my_dict.load_file(filename);
 }
 
 bool cwordle::load_file_allowed(const string &filename)
 {
+    best_start.clear();
     return my_dict.load_file_allowed(filename);
 }
 
@@ -134,13 +138,13 @@ void cwordle::clear()
 bool cwordle::set_word(const string_view &w)
 {
     string groomed = wordle_word::groom(w);
-    if (groomed.empty()) {
-        return false;
-    } else {
+    bool ok = !groomed.empty();
+    if (ok) {
         clear();
+        abandoned = false;
         current_word.set_word(groomed);
-        return true;
     }
+    return ok;
 }
 
 /************************************************************************
@@ -217,12 +221,12 @@ void cwordle::undo()
 bool cwordle::add_word(const string &w)
 {
     string groomed = wordle_word::groom(w);
-    if (groomed.empty()) {
-        return false;
-    } else {
+    bool ok = !groomed.empty();
+    if (ok) {
         my_dict.insert(groomed);
-        return true;
+        best_start.clear();
     }
+    return ok;
 }
 
 /************************************************************************

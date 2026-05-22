@@ -554,7 +554,7 @@ wordle_word::match_target::match_target(const wordle_word &target, const match_r
             only_partial_mask[i] = letter_mask();
         }
     }
-    partial_match_count = partial_count.size();
+    partial_match_count = only_partial.size();
     letter_mask already_seen;
     for (size_t i : irange(0, word_length)) {
         char ch = my_word->text[i];
